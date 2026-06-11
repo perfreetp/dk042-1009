@@ -9,6 +9,7 @@ export default function EndingScreen() {
   const character = useGameStore(s => s.character)
   const endingId = useGameStore(s => s.endingId)
   const availableEndings = useGameStore(s => s.availableEndings)
+  const endingReasons = useGameStore(s => s.endingReasons)
   const relationships = useGameStore(s => s.relationships)
   const logs = useGameStore(s => s.logs)
   const resetGame = useGameStore(s => s.resetGame)
@@ -207,6 +208,50 @@ export default function EndingScreen() {
             )}
           </div>
         </div>
+
+        {endingReasons.length > 0 && (
+          <div className="card mb-8" style={{ borderColor: 'rgba(251,191,36,0.4)' }}>
+            <h2 className="section-title text-xl">📋 结局达成原因分析</h2>
+            <p className="text-secondary text-sm mb-4">
+              你的每一个选择，都在影响最终的结局。以下是系统根据你的修行轨迹做出的判定：
+            </p>
+            <div className="space-y-2">
+              {endingReasons.map((reason, idx) => (
+                <div
+                  key={idx}
+                  className={`p-4 rounded-lg flex items-start gap-3 ${
+                    reason.met
+                      ? 'bg-[rgba(34,197,94,0.08)] border border-[rgba(34,197,94,0.3)]'
+                      : 'bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)]'
+                  }`}
+                >
+                  <div className="text-2xl flex-shrink-0 mt-0.5">
+                    {reason.met ? '✅' : '❌'}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`font-bold ${reason.met ? 'text-good' : 'text-bad'}`}>
+                        {reason.condition}
+                      </span>
+                      <span className="text-xs text-secondary">
+                        权重: {reason.weight > 0 ? '+' : ''}{reason.weight}
+                      </span>
+                    </div>
+                    <p className="text-sm text-secondary">
+                      {reason.description}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-4 rounded-lg bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)]">
+              <p className="text-sm text-secondary text-center">
+                💡 <span className="text-good">绿色</span> 表示该条件对你达成此结局有正面贡献，
+                <span className="text-bad"> 红色</span> 表示该条件未满足或产生负面影响
+              </p>
+            </div>
+          </div>
+        )}
 
         {otherEndings.length > 0 && (
           <div className="card mb-8">

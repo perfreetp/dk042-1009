@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
-import type { Quest, QuestChoice } from '@/types/game'
+import type { Quest, QuestChoice, MainQuest, RelationshipEvent } from '@/types/game'
 import { generateShopItems } from '@/services/aiService'
 import type { Skill } from '@/types/game'
 
@@ -23,10 +23,14 @@ export default function TownScreen() {
   const character = useGameStore(s => s.character)
   const relationships = useGameStore(s => s.relationships)
   const quests = useGameStore(s => s.quests)
+  const mainQuest = useGameStore(s => s.mainQuest)
+  const pendingRelationshipEvent = useGameStore(s => s.pendingRelationshipEvent)
   const refreshTown = useGameStore(s => s.refreshTown)
   const interactWithNPC = useGameStore(s => s.interactWithNPC)
   const acceptQuest = useGameStore(s => s.acceptQuest)
   const resolveQuest = useGameStore(s => s.resolveQuest)
+  const resolveMainQuestChoice = useGameStore(s => s.resolveMainQuestChoice)
+  const resolveRelationshipEvent = useGameStore(s => s.resolveRelationshipEvent)
   const buySkill = useGameStore(s => s.buySkill)
   const addLog = useGameStore(s => s.addLog)
 
@@ -34,6 +38,8 @@ export default function TownScreen() {
   const [loading, setLoading] = useState(false)
   const [shopItems, setShopItems] = useState<ShopItem[]>([])
   const [activeQuest, setActiveQuest] = useState<Quest | null>(null)
+  const [activeMainQuestStep, setActiveMainQuestStep] = useState<MainQuest['steps'][0] | null>(null)
+  const [eventOutcome, setEventOutcome] = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -69,6 +75,29 @@ export default function TownScreen() {
     }
     buySkill(item.skill.id, item.price)
     setShopItems(prev => prev.filter(i => i.skill.id !== item.skill.id))
+  }
+
+  const handleResolveMainQuest = (choice: QuestChoice) => {
+    if (!activeMainQuestStep) return
+    setEventOutcome(choice.specialOutcome || '你的选择产生了深远的影响……')
+    setTimeout(() => {
+      resolveMainQuestChoice(choice)
+      setActiveMainQuestStep(null)
+      setEventOutcome(null)
+    }, 2000)
+  }
+
+  const handleRelationshipEventChoice = (choice?: QuestChoice) => {
+    if (!pendingRelationshipEvent) return
+    if (choice) {
+      setEventOutcome(choice.specialOutcome || '事情告一段落……')
+      setTimeout(() => {
+        resolveRelationshipEvent(choice)
+        setEventOutcome(null)
+      }, 2000)
+    } else {
+      resolveRelationshipEvent()
+    }
   }
 
   const getBondColor = (bond: number) => {
@@ -198,6 +227,41 @@ export default function TownScreen() {
         </div>
       ) : tab === 'quests' ? (
         <div>
+          {mainQuest && mainQuest.started && !mainQuest.completed && (
+            <div className="card card-gold mb-6" style={{ borderColor: 'rgba(251,191,36,0.6)' }}>
+              <div className="flex items-start gap-3 mb-4">
+                <div className="text-4xl flex-shrink-0">📜</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 className="section-title !mb-0">
+                      【主线】{mainQuest.name}
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[rgba(251,191,36,0.2)] text-gold font-bold">
+                      第 {mainQuest.currentStepIndex + 1}/{mainQuest.steps.length} 章
+                    </span>
+                  </div>
+                  <p className="text-sm text-secondary mb-3">{mainQuest.description}</p>
+                  {mainQuest.currentStepIndex < mainQuest.steps.length && (
+                    <div className="p-4 rounded-lg bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)]">
+                      <h4 className="font-bold text-gold mb-2">
+                        当前任务：{mainQuest.steps[mainQuest.currentStepIndex].title}
+                      </h4>
+                      <p className="text-sm text-secondary mb-3">
+                        {mainQuest.steps[mainQuest.currentStepIndex].description}
+                      </p>
+                      <button
+                        className="btn btn-gold"
+                        onClick={() => setActiveMainQuestStep(mainQuest.steps[mainQuest.currentStepIndex])}
+                      >
+                        ▶ 接取主线任务
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="card mb-6">
             <h3 className="section-title">可接委托</h3>
             {quests.length === 0 ? (
@@ -355,6 +419,119 @@ export default function TownScreen() {
             <button className="btn w-full" onClick={() => setActiveQuest(null)}>
               取消（暂不执行）
             </button>
+          </div>
+        </div>
+      )}
+
+      {activeMainQuestStep && !eventOutcome && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card card-gold max-w-2xl w-full fade-in max-h-[85vh] overflow-y-auto" style={{ boxShadow: '0 0 80px rgba(251,191,36,0.3)' }}>
+            <h2 className="section-title text-xl text-center text-gold">
+              📜 【主线】{activeMainQuestStep.title}
+            </h2>
+            <div className="p-5 rounded-xl bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.3)] mb-6">
+              <p className="text-lg leading-relaxed">
+                {activeMainQuestStep.narrative}
+              </p>
+            </div>
+            <div className="space-y-3 mb-6">
+              {activeMainQuestStep.choices.map(choice => (
+                <button
+                  key={choice.id}
+                  onClick={() => handleResolveMainQuest(choice)}
+                  className="w-full text-left p-5 rounded-xl bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] hover:border-[var(--border-gold)] hover:bg-[rgba(212,175,55,0.08)] transition-all text-lg"
+                >
+                  <div className="font-bold mb-2">{choice.text}</div>
+                  <div className="flex gap-3 flex-wrap text-xs">
+                    <span className="text-info">成功率：{Math.round(choice.successRate * 100)}%</span>
+                    {choice.karmaChange !== 0 && (
+                      <span className={choice.karmaChange > 0 ? 'text-good' : 'text-bad'}>
+                        因果 {choice.karmaChange > 0 ? '+' : ''}{choice.karmaChange}
+                      </span>
+                    )}
+                    {choice.fameChange !== 0 && (
+                      <span className={choice.fameChange > 0 ? 'text-good' : 'text-bad'}>
+                        名望 {choice.fameChange > 0 ? '+' : ''}{choice.fameChange}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button className="btn w-full" onClick={() => setActiveMainQuestStep(null)}>
+              取消（稍后再做决定）
+            </button>
+          </div>
+        </div>
+      )}
+
+      {eventOutcome && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card card-gold max-w-xl w-full fade-in" style={{ boxShadow: 'var(--shadow-gold)' }}>
+            <h2 className="section-title text-xl text-center text-gold mb-4">
+              ✨ 抉择已定
+            </h2>
+            <div className="p-5 rounded-xl bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.3)]">
+              <p className="text-lg leading-relaxed text-center">
+                {eventOutcome}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingRelationshipEvent && !eventOutcome && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`card max-w-xl w-full fade-in ${
+            pendingRelationshipEvent.type === 'betrayal' ? 'card-bad' :
+            pendingRelationshipEvent.type === 'romance' ? 'card-gold' : 'card'
+          }`} style={{
+            borderColor: pendingRelationshipEvent.type === 'betrayal' ? 'rgba(239,68,68,0.6)' :
+                       pendingRelationshipEvent.type === 'romance' ? 'rgba(251,191,36,0.6)' :
+                       'rgba(139,92,246,0.6)'
+          }}>
+            <h2 className="section-title text-xl text-center mb-4" style={{
+              color: pendingRelationshipEvent.type === 'betrayal' ? 'var(--accent-red)' :
+                     pendingRelationshipEvent.type === 'romance' ? 'var(--accent-gold)' :
+                     'var(--accent-purple)'
+            }}>
+              {pendingRelationshipEvent.type === 'gift' ? '🎁 ' :
+               pendingRelationshipEvent.type === 'romance' ? '💕 ' :
+               pendingRelationshipEvent.type === 'betrayal' ? '⚔️ ' :
+               pendingRelationshipEvent.type === 'special_dialogue' ? '💬 ' :
+               pendingRelationshipEvent.type === 'rivalry' ? '⚡ ' : '✨ '}
+              {pendingRelationshipEvent.title}
+            </h2>
+            <div className="p-5 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.3)] mb-6">
+              <p className="text-lg leading-relaxed">
+                {pendingRelationshipEvent.narrative}
+              </p>
+            </div>
+            {pendingRelationshipEvent.choices && pendingRelationshipEvent.choices.length > 0 ? (
+              <div className="space-y-3">
+                {pendingRelationshipEvent.choices.map(choice => (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleRelationshipEventChoice(choice)}
+                    className="w-full text-left p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:border-[var(--border-gold)] transition-all"
+                  >
+                    <div className="font-bold mb-1">{choice.text}</div>
+                    <div className="flex gap-3 flex-wrap text-xs">
+                      <span className="text-info">成功率：{Math.round(choice.successRate * 100)}%</span>
+                      {choice.karmaChange !== 0 && (
+                        <span className={choice.karmaChange > 0 ? 'text-good' : 'text-bad'}>
+                          因果 {choice.karmaChange > 0 ? '+' : ''}{choice.karmaChange}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <button className="btn btn-gold w-full" onClick={() => handleRelationshipEventChoice()}>
+                收下这份心意
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
-import type { RiskLevel } from '@/types/game'
+import type { RiskLevel, DemonChoice } from '@/types/game'
 import { REALM_ORDER } from '@/types/game'
 
 export default function ScheduleScreen() {
   const character = useGameStore(s => s.character)
   const currentDay = useGameStore(s => s.currentDay)
   const breakthroughReady = useGameStore(s => s.breakthroughReady)
+  const pendingDemonTrial = useGameStore(s => s.pendingDemonTrial)
+  const pendingDemonFromSchedule = useGameStore(s => s.pendingDemonFromSchedule)
   const triggerDemonTrial = useGameStore(s => s.triggerDemonTrial)
+  const resolveDemonChoiceInSchedule = useGameStore(s => s.resolveDemonChoiceInSchedule)
   const attemptBreakthrough = useGameStore(s => s.attemptBreakthrough)
   const doMeditation = useGameStore(s => s.doMeditation)
   const doBodyTraining = useGameStore(s => s.doBodyTraining)
@@ -17,6 +20,7 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState<string | null>(null)
   const [showBreakthrough, setShowBreakthrough] = useState(false)
   const [showDemon, setShowDemon] = useState(false)
+  const [demonOutcome, setDemonOutcome] = useState<{ text: string; choice: DemonChoice } | null>(null)
 
   if (!character) return null
 
@@ -33,7 +37,16 @@ export default function ScheduleScreen() {
 
   const handleDemonTrial = async () => {
     setShowDemon(false)
-    await withLoading('demon', triggerDemonTrial)
+    setDemonOutcome(null)
+    await withLoading('demon', () => triggerDemonTrial(true))
+  }
+
+  const handleDemonChoice = (choice: DemonChoice) => {
+    setDemonOutcome({ text: choice.outcomeText, choice })
+    setTimeout(() => {
+      resolveDemonChoiceInSchedule(choice)
+      setDemonOutcome(null)
+    }, 2000)
   }
 
   const nextRealm = REALM_ORDER[REALM_ORDER.indexOf(character.realm) + 1] || '巅峰'
@@ -255,6 +268,64 @@ export default function ScheduleScreen() {
               <button className="btn btn-primary flex-1" onClick={handleDemonTrial}>
                 直面本心，迎接试炼
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingDemonTrial && pendingDemonFromSchedule && !demonOutcome && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card max-w-2xl w-full fade-in" style={{ borderColor: 'var(--accent-purple)', boxShadow: '0 0 60px rgba(139,92,246,0.5)' }}>
+            <h2 className="section-title text-2xl text-center mb-6" style={{ color: 'var(--accent-purple)' }}>
+              👁️ 心魔试炼 · 直面本心
+            </h2>
+            <div className="p-6 rounded-lg bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.4)] mb-6">
+              <p className="text-xl leading-relaxed text-center font-medium">
+                {pendingDemonTrial.question}
+              </p>
+            </div>
+            <div className="space-y-3">
+              {pendingDemonTrial.choices.map((choice, idx) => (
+                <button
+                  key={choice.id}
+                  onClick={() => handleDemonChoice(choice)}
+                  className="w-full text-left p-5 rounded-xl bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] hover:border-[var(--accent-purple)] hover:bg-[rgba(139,92,246,0.15)] transition-all text-lg"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <span className="text-gold font-bold mr-2">{String.fromCharCode(65 + idx)}.</span>
+                  {choice.text}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-secondary text-center mt-4">
+              选择一个答案，直面你内心最真实的想法……
+            </p>
+          </div>
+        </div>
+      )}
+
+      {demonOutcome && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card max-w-xl w-full fade-in" style={{ borderColor: 'var(--accent-gold)', boxShadow: 'var(--shadow-gold)' }}>
+            <h2 className="section-title text-2xl text-center mb-6 text-gold">
+              ✨ 试炼结果
+            </h2>
+            <div className="p-6 rounded-lg bg-[rgba(255,215,0,0.08)] border border-[rgba(255,215,0,0.3)] mb-6">
+              <p className="text-lg leading-relaxed text-center">
+                {demonOutcome.text}
+              </p>
+            </div>
+            <div className="text-center text-secondary">
+              <p className="mb-2">
+                心之力 <span className={demonOutcome.choice.heartStrength >= 0 ? 'text-good' : 'text-bad'}>
+                  {demonOutcome.choice.heartStrength >= 0 ? '+' : ''}{demonOutcome.choice.heartStrength}
+                </span>
+              </p>
+              <p>
+                因果 <span className={demonOutcome.choice.karmaEffect >= 0 ? 'text-good' : 'text-bad'}>
+                  {demonOutcome.choice.karmaEffect >= 0 ? '+' : ''}{demonOutcome.choice.karmaEffect}
+                </span>
+              </p>
             </div>
           </div>
         </div>

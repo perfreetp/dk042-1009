@@ -972,5 +972,696 @@ export const ENDINGS: Ending[] = [
     narrative: '你放弃了一切——爱情、友情、亲情、甚至是善恶。你成为了"道"本身的一部分，没有喜怒哀乐，没有爱恨情仇。你存在于每一粒尘埃中，也存在于浩渺的星河间。永恒，是对你最好的诠释。只是，在那无尽的岁月深处，似乎还残留着一丝……你早已忘记的温暖。',
     conditions: { minRealm: '大乘期', daoxin: ['detached'] },
     rarity: '神话'
+  },
+  {
+    id: 'end_local_hero',
+    title: '一方守护',
+    subtitle: '普通结局',
+    description: '你虽未能得道成仙，但守护了一方百姓平安。',
+    narrative: '修行一途，终究需要机缘。你知道自己此生与仙途无缘，但也并未妄自菲薄。你回到了家乡所在的小城，成为了当地的守护者。平日里悬壶济世，降妖除魔，深受百姓爱戴。寿元耗尽那天，满城百姓为你披麻戴孝。百年之后，人们为你立祠供奉，香火绵延不绝。',
+    conditions: { maxRealm: '筑基期', minKarma: 10, minFame: 10 },
+    rarity: '普通'
+  },
+  {
+    id: 'end_shopkeeper',
+    title: '逍遥店主',
+    subtitle: '普通结局',
+    description: '你开了一家小店，过着与世无争的生活。',
+    narrative: '修仙太累，打打杀杀更累。你用攒下的灵石在镇上开了一家小店，卖些符箓、丹药、法器。不求大富大贵，只求三餐温饱。偶尔有相熟的修士来坐坐，聊聊修真界的趣闻轶事。日子过得平平淡淡，却也安稳自在。',
+    conditions: { maxRealm: '炼气期', minKarma: 0, maxFame: 40, maxBondSum: 30 },
+    rarity: '普通'
+  },
+  {
+    id: 'end_mercenary',
+    title: '赏金猎人',
+    subtitle: '普通结局',
+    description: '你以完成悬赏为生，行走在正邪边缘。',
+    narrative: '你没有固定的宗门，也没有明确的善恶观念。谁出灵石，你就替谁办事。降妖除魔你做，杀人越货你也做。修真界的人提到你的名字，有的咬牙切齿，有的竖起大拇指。你不在乎，有灵石就行。',
+    conditions: { maxRealm: '金丹期', minKarma: -40, maxKarma: 0, minFame: 20 },
+    rarity: '普通'
+  },
+  {
+    id: 'end_recluse',
+    title: '山野隐者',
+    subtitle: '普通结局',
+    description: '你独自隐居深山，不问世事。',
+    narrative: '你厌倦了修真界的纷争，独自搬进了深山老林。渴了饮山泉，饿了采野果，闲时就打坐修行。不知过了多少年，你坐化在一个山洞里。没有人知道你的存在，也没有人记得你的名字。但你并不在意——这本就是你想要的。',
+    conditions: { maxRealm: '筑基期', maxBondSum: 10, maxFame: 20 },
+    rarity: '普通'
+  },
+  {
+    id: 'end_teacher',
+    title: '私塾先生',
+    subtitle: '普通结局',
+    description: '你放弃修仙，成为了一名教书育人的先生。',
+    narrative: '你忽然想通了：修仙问道，求的不过是一个"理"字。既然如此，又何必执着于长生？你脱下道袍，换上儒衫，在小镇上当了一名私塾先生。你教孩子们读书识字，教他们做人的道理。看着一届届学生长大成人，你觉得，这或许就是另一种道。',
+    conditions: { maxRealm: '炼气期', minKarma: 20, daoxin: ['benevolent', 'cautious', 'detached'] },
+    rarity: '普通'
+  },
+  {
+    id: 'end_true_hero',
+    title: '正道之光',
+    subtitle: '传说结局',
+    description: '你完成了【青云劫】主线，拯救了整个修真界！',
+    narrative: '当年那朵不起眼的青云莲，竟牵扯出一桩惊天阴谋。你一路追查，历经生死，最终粉碎了邪修的灭世计划。当你拖着残破的身躯从魔窟中走出时，整个修真界都在向你跪拜。你没有成为仙，但你成为了——光。',
+    conditions: { minRealm: '金丹期', minFame: 50, completedMainQuest: 'main_qingyun' },
+    rarity: '传说'
+  },
+  {
+    id: 'end_dark_lord',
+    title: '万魔之主',
+    subtitle: '传说结局',
+    description: '你接受了魔主传承，成为了新一代的魔道领袖。',
+    narrative: '在探索远古遗迹时，你发现了上古魔主的传承。是毁灭它，还是接受它？你选择了后者。力量、权力、永生——唾手可得。当你戴上那枚象征魔主的戒指时，万千魔物向你臣服。正道恨你入骨，却又对你畏之如虎。你站在魔宫之巅，冷冷地看着这个世界：从今往后，由我主宰。',
+    conditions: { minRealm: '金丹期', maxKarma: -30, completedMainQuest: 'main_demon' },
+    rarity: '传说'
   }
 ]
+
+export const MAIN_QUESTS = {
+  main_qingyun: {
+    id: 'main_qingyun',
+    name: '青云劫',
+    description: '一朵青云莲，牵出一段惊天秘辛。你的选择，将决定整个修真界的命运。',
+    started: false,
+    completed: false,
+    currentStepIndex: 0,
+    steps: [
+      {
+        id: 'mq_qingyun_1',
+        title: '青云异象',
+        description: '青云山近日异象频发，似有宝物出世，也可能是……大凶之兆。',
+        narrative: '你在城镇中听到路人议论：青云山最近几日每到夜晚就会有青光冲天，据说青云派的人已经封锁了山路。有人说那是异宝出世，也有人说那是妖孽作祟。你正思考间，一位青云派弟子匆匆跑来，似乎在找人。',
+        minDay: 5,
+        minRealm: '炼气期',
+        choices: [
+          {
+            id: 'volunteer',
+            text: '主动上前询问，表示愿意帮忙',
+            karmaChange: 10,
+            fameChange: 5,
+            successRate: 1,
+            specialOutcome: '青云弟子感激涕零，说掌门正在寻找有能力的修士共同调查青云异象。'
+          },
+          {
+            id: 'follow_quietly',
+            text: '不动声色，悄悄跟上那位弟子',
+            karmaChange: 0,
+            fameChange: 0,
+            successRate: 0.7,
+            specialOutcome: '你远远跟着那位弟子，想看看究竟发生了什么事。'
+          },
+          {
+            id: 'ignore',
+            text: '事不关己，高高挂起',
+            karmaChange: 0,
+            fameChange: 0,
+            successRate: 1,
+            specialOutcome: '你决定不掺和这趟浑水。但心中，似乎总有一丝悸动。'
+          }
+        ],
+        reward: {
+          fame: 15,
+          karma: 10,
+          relationshipChanges: [{ id: 'npc_qingxuan', bondChange: 15 }, { id: 'npc_hanfeng', bondChange: 10 }]
+        }
+      },
+      {
+        id: 'mq_qingyun_2',
+        title: '莲现端倪',
+        description: '青云山深处，一朵黑色莲花正在悄然绽放。',
+        narrative: '你随青云派众人深入青云山腹地，发现了一个被封印的山洞。洞中魔气氤氲，中心处生长着一朵诡异的黑莲，散发着令人心悸的气息。掌门青玄子神色凝重："这是上古魔器——噬心莲。它若完全绽放，方圆百里都将沦为魔域。"',
+        minDay: 15,
+        minRealm: '炼气期',
+        requiresCompleted: ['mq_qingyun_1'],
+        choices: [
+          {
+            id: 'destroy_now',
+            text: '提议立刻毁掉魔莲，哪怕付出代价',
+            karmaChange: 15,
+            fameChange: 10,
+            successRate: 0.6,
+            specialOutcome: '你提议立即动手，但魔莲的魔气远超想象。能否成功，尚在未定之天。'
+          },
+          {
+            id: 'investigate_first',
+            text: '建议先研究清楚来历再做决定',
+            karmaChange: 5,
+            fameChange: 5,
+            successRate: 0.85,
+            specialOutcome: '你建议谨慎行事，先弄清楚这魔莲的来历。青玄子掌门点头表示赞同。'
+          },
+          {
+            id: 'seal_cave',
+            text: '主张暂且封印洞口，从长计议',
+            karmaChange: 0,
+            fameChange: 0,
+            successRate: 0.95,
+            specialOutcome: '你认为魔莲暂时无法可解，不如先封印洞口，等准备充分再处理。'
+          }
+        ],
+        reward: {
+          fame: 25,
+          karma: 15,
+          spiritStones: 300,
+          relationshipChanges: [{ id: 'npc_qingxuan', bondChange: 20 }]
+        }
+      },
+      {
+        id: 'mq_qingyun_3',
+        title: '邪修来袭',
+        description: '魔莲出世的消息走漏，邪修组织闻风而至。',
+        narrative: '你调查魔莲来历期间，一群邪修突然袭击了青云山！他们目标明确，直取魔莲所在的山洞。为首者竟也是金丹期修士，口中念念有词："魔主重生，圣莲归位！" 一场大战，在所难免。',
+        minDay: 25,
+        minRealm: '筑基期',
+        requiresCompleted: ['mq_qingyun_2'],
+        choices: [
+          {
+            id: 'defend_front',
+            text: '正面迎敌，守护青云山门',
+            karmaChange: 20,
+            fameChange: 20,
+            successRate: 0.5,
+            specialOutcome: '你挡在最前方，直面邪修主力。这将是一场苦战！'
+          },
+          {
+            id: 'protect_lotus',
+            text: '退守山洞，保护魔莲不被夺走',
+            karmaChange: 15,
+            fameChange: 15,
+            successRate: 0.7,
+            specialOutcome: '你判断邪修的目标是魔莲，与其正面硬拼不如守住关键。'
+          },
+          {
+            id: 'assassinate',
+            text: '潜行偷袭，擒贼先擒王',
+            karmaChange: 10,
+            fameChange: 10,
+            successRate: 0.4,
+            specialOutcome: '你打算冒险潜行，直接斩杀对方首领。成功的话，敌人群龙无首自然溃散。'
+          }
+        ],
+        reward: {
+          fame: 40,
+          karma: 25,
+          spiritStones: 500,
+          skillId: 'qingyun_sword',
+          relationshipChanges: [{ id: 'npc_qingxuan', bondChange: 25 }, { id: 'npc_linger', bondChange: 20 }]
+        }
+      },
+      {
+        id: 'mq_qingyun_4',
+        title: '真相大白',
+        description: '从俘虏口中，你得知了一个惊天秘密。',
+        narrative: '击退邪修后，你从俘虏口中得知了惊人真相：这魔莲竟是上古大战中被封印的魔主元神所化！而且……青玄子掌门似乎早就知道这件事。你拿着供词去找掌门，却发现掌门正站在魔莲前，神情复杂。',
+        minDay: 35,
+        minRealm: '筑基期',
+        requiresCompleted: ['mq_qingyun_3'],
+        choices: [
+          {
+            id: 'confront_master',
+            text: '直接质问掌门，要求真相',
+            karmaChange: 10,
+            fameChange: 5,
+            successRate: 1,
+            specialOutcome: '你选择相信自己的判断，直接向掌门问个明白。'
+          },
+          {
+            id: 'investigate_secretly',
+            text: '不动声色，暗中调查真相',
+            karmaChange: 5,
+            fameChange: 0,
+            successRate: 0.8,
+            specialOutcome: '你压下心中疑虑，决定先暗中调查，不打草惊蛇。'
+          },
+          {
+            id: 'report_sect',
+            text: '联系青云派长老，揭露掌门嫌疑',
+            karmaChange: 15,
+            fameChange: -10,
+            successRate: 0.6,
+            specialOutcome: '你认为事态严重，决定联系长老会。但这可能会让掌门记恨在心。'
+          }
+        ],
+        reward: {
+          fame: 30,
+          karma: 20,
+          relationshipChanges: [{ id: 'npc_mohen', bondChange: 15 }]
+        }
+      },
+      {
+        id: 'mq_qingyun_5',
+        title: '终局·魔降',
+        description: '魔主即将降临，你的最终选择，将决定天下苍生的命运。',
+        narrative: '原来当年封印魔主的，正是青玄子掌门的师父。封印即将到期，掌门这些年一直在寻找彻底消灭魔主的方法。然而，就在真相大白之际，魔莲突然绽放！魔主的气息笼罩了整个青云山。青玄子掌门咬牙道："只有以我毕生修为作为代价，才能彻底毁掉它。但我需要一个人帮我护法……"',
+        minDay: 50,
+        minRealm: '金丹期',
+        requiresCompleted: ['mq_qingyun_4'],
+        choices: [
+          {
+            id: 'protect_master',
+            text: '为掌门护法，助他完成封印',
+            karmaChange: 30,
+            fameChange: 50,
+            successRate: 0.7,
+            specialOutcome: '你选择相信掌门，为他护法。这一战，不仅是为了青云，更是为了天下苍生。'
+          },
+          {
+            id: 'sacrifice_self',
+            text: '恳请让你来代替掌门完成牺牲',
+            karmaChange: 50,
+            fameChange: 80,
+            successRate: 0.4,
+            specialOutcome: '你看出掌门若强行施法必死无疑，决定由自己来承担这一切。'
+          },
+          {
+            id: 'accept_demon',
+            text: '趁乱夺取魔主力量，为己所用',
+            karmaChange: -60,
+            fameChange: -50,
+            successRate: 0.3,
+            specialOutcome: '一个疯狂的念头在你脑海中闪过：若是我能控制这份力量呢……'
+          }
+        ],
+        reward: {
+          fame: 100,
+          karma: 50,
+          spiritStones: 2000,
+          unlockEnding: 'end_true_hero'
+        }
+      }
+    ]
+  }
+}
+
+export const SECRET_REALM_DATA = {
+  id: 'realm_tianji',
+  name: '天机秘境',
+  description: '传说中天机老人留下的秘境，藏有无数功法秘典，以及……一道关于命运的谜题。',
+  discovered: false,
+  completed: false,
+  stage: 0,
+  totalStages: 4,
+  lastVisitedDay: 0,
+  clues: []
+}
+
+export const SECRET_REALM_EVENTS = [
+  {
+    id: 'evt_tianji_clue_1',
+    title: '神秘残卷',
+    narrative: '你在一处偏僻山洞中发现了一块布满灰尘的玉片，上面刻着奇异的符文。依稀可辨认出"天机"、"归位"等字样。玉片一角似乎还缺了什么。',
+    type: 'opportunity' as const,
+    choices: [
+      {
+        id: 'take_fragment',
+        text: '收好残片，或许日后有用',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你将玉片小心收好，冥冥中似乎有什么东西被触动了。',
+            realmProgressChange: 5,
+            luckChange: 3
+          }
+        ]
+      },
+      {
+        id: 'leave_fragment',
+        text: '可疑之物，还是不要碰为妙',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你放下玉片，转身离开。走出几步后，你忽然若有所失。'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'evt_tianji_clue_2',
+    title: '守墓老人',
+    narrative: '一位白发苍苍的老人守在一座无名古坟前。他看到你，浑浊的眼睛忽然一亮："终于有人来了……你身上，有那枚玉片的气息。"',
+    type: 'enlightenment' as const,
+    minRealm: '炼气期',
+    choices: [
+      {
+        id: 'show_fragment',
+        text: '拿出玉片，询问详情',
+        requires: { item: 'tianji_fragment' },
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '老人看到玉片，激动得热泪盈眶："天机秘境……终于要重新开启了！这是第二枚残片，收好。"',
+            realmProgressChange: 10,
+            mindChange: 10
+          }
+        ]
+      },
+      {
+        id: 'ask_old_man',
+        text: '请教老人这是怎么回事',
+        outcomes: [
+          {
+            probability: 0.7,
+            narrative: '老人长叹一声："老夫天机老人座下童子，在此守候千年，只为等一个有缘人。你若真有仙缘，自会遇到那枚玉片。"',
+            mindChange: 5,
+            luckChange: 5
+          },
+          {
+            probability: 0.3,
+            narrative: '老人却只是摇头："时机未到，时机未到……你走吧。"',
+            luckChange: 1
+          }
+        ]
+      },
+      {
+        id: 'ignore_old_man',
+        text: '此人神色古怪，还是避开为好',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你转身离开，身后传来老人悠长的叹息声。'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'evt_tianji_entrance',
+    title: '秘境开启',
+    narrative: '当你将三枚残片拼在一起时，天地变色！一座古朴的石门凭空浮现，门上刻着四个大字——"天机秘境"。石门缓缓开启，一股苍凉古老的气息扑面而来。',
+    type: 'opportunity' as const,
+    minRealm: '筑基期',
+    choices: [
+      {
+        id: 'enter_realm',
+        text: '踏入秘境，一探究竟',
+        outcomes: [
+          {
+            probability: 0.5,
+            narrative: '你走入秘境，无数信息流涌入脑海！那是天机老人毕生的感悟，包罗万象。',
+            realmProgressChange: 30,
+            mindChange: 20,
+            spiritChange: 20
+          },
+          {
+            probability: 0.3,
+            narrative: '秘境中危机四伏，你破解了几道禁制后，获得了不少天材地宝。',
+            spiritStonesChange: 800,
+            realmProgressChange: 15
+          },
+          {
+            probability: 0.2,
+            narrative: '你触动了秘境深处的禁法，被一股力量震出！虽然受伤，但也看到了一些了不得的东西。',
+            spiritChange: -20,
+            bodyChange: -15,
+            mindChange: 10
+          }
+        ]
+      },
+      {
+        id: 'seal_entrance',
+        text: '此地太过凶险，先封印起来',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你布下几道临时禁制，将秘境入口暂时封住。机缘虽好，但命更重要。'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'evt_tianji_final',
+    title: '命运抉择',
+    narrative: '秘境最深处，你见到了天机老人的尸身，以及他留下的两样东西——一卷名为《天衍神算》的功法，和一面可以看到自己死亡瞬间的"往生镜"。天机老人留字："二者只能择一。选功法，可得无上力量；选往生镜，可知天命几何。"',
+    type: 'choice' as const,
+    minRealm: '金丹期',
+    choices: [
+      {
+        id: 'take_skill',
+        text: '取《天衍神算》功法',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你选择了功法。翻开第一页，上书："天衍四十九，遁去其一。" 你隐约明白了什么。',
+            skillGain: {
+              id: 'tianyan_calculate',
+              name: '天衍神算',
+              description: '天机老人传承绝学，可推算吉凶祸福，趋利避害。',
+              level: 1,
+              maxLevel: 15,
+              type: 'support',
+              tags: ['秘传', '占卜', '天机']
+            },
+            fameChange: 20
+          }
+        ]
+      },
+      {
+        id: 'take_mirror',
+        text: '取往生镜，一观天命',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你看向往生镜，镜面泛起涟漪。镜中显现的画面……让你久久无语。你获得了一道隐藏的心魔题目，答案只有你自己知道。',
+            karmaChange: 20,
+            mindChange: 30,
+            luckChange: 20
+          }
+        ]
+      },
+      {
+        id: 'take_nothing',
+        text: '两样都不取，转身离开',
+        outcomes: [
+          {
+            probability: 1,
+            narrative: '你对着天机老人的尸身深鞠一躬，转身离开了秘境。走到门口时，你忽然觉得灵台无比清明。你的道心，已经不需要这些外物来证明了。',
+            karmaChange: 30,
+            mindChange: 40,
+            realmProgressChange: 50,
+            fameChange: 30
+          }
+        ]
+      }
+    ]
+  }
+]
+
+export const RELATIONSHIP_EVENTS_DATA = [
+  {
+    id: 're_qingxuan_gift',
+    relationshipId: 'npc_qingxuan',
+    triggerBond: 30,
+    type: 'gift' as const,
+    triggered: false,
+    title: '掌门授剑',
+    narrative: '青玄子掌门将你叫到身边，满意地看了你许久："好，好！你果然没有让我失望。这把「青云剑」随我多年，今日便赠予你，望你斩妖除魔，守护正道。"',
+    reward: {
+      bondChange: 20,
+      spiritStones: 0
+    }
+  },
+  {
+    id: 're_linger_confession',
+    relationshipId: 'npc_linger',
+    triggerBond: 50,
+    type: 'romance' as const,
+    triggered: false,
+    title: '少女心事',
+    narrative: '苏灵儿红着脸找到你，扭捏了半天，塞给你一个香囊："这、这是我亲手做的，你……你不许丢掉！还有，那个……下次游历，可以……可以带我一起吗？"',
+    choices: [
+      {
+        id: 'accept',
+        text: '微笑着收下，并许下约定',
+        karmaChange: 5,
+        fameChange: 0,
+        successRate: 1,
+        specialOutcome: '苏灵儿喜出望外，蹦蹦跳跳地跑开了，远远地喊了一句："说好了哦！"'
+      },
+      {
+        id: 'decline',
+        text: '委婉拒绝，表示一心向道',
+        karmaChange: 0,
+        fameChange: 0,
+        successRate: 1,
+        specialOutcome: '苏灵儿的眼神黯淡下去，但还是强颜欢笑："也、也是呢……修仙为重，是我太任性了。"'
+      }
+    ],
+    reward: {
+      bondChange: 30
+    }
+  },
+  {
+    id: 're_hanfeng_duel',
+    relationshipId: 'npc_hanfeng',
+    triggerBond: 40,
+    type: 'special_dialogue' as const,
+    triggered: false,
+    title: '大师兄的指点',
+    narrative: '寒风找到你，说要与你切磋一场。激战过后，他认真地说："你的剑法很好，但太过刚猛，易折。这招「流云式」你且看好，刚柔并济，方是正道。"',
+    reward: {
+      bondChange: 15,
+      skillId: 'cloud_sword'
+    }
+  },
+  {
+    id: 're_baishang_treatment',
+    relationshipId: 'npc_baishang',
+    triggerBond: 35,
+    type: 'gift' as const,
+    triggered: false,
+    title: '医仙赠药',
+    narrative: '白裳姑娘听说你受过内伤，特意找到你，递给你一个精致的玉瓶："这是我炼制的「九转还魂丹」，关键时候能救你一命。下次别那么拼命了，你的命，不止属于你自己。"',
+    reward: {
+      bondChange: 15,
+      spiritStones: 0
+    }
+  },
+  {
+    id: 're_liancheng_betrayal',
+    relationshipId: 'npc_liancheng',
+    triggerBond: -30,
+    type: 'betrayal' as const,
+    triggered: false,
+    title: '暗箭难防',
+    narrative: '你执行任务时，连城突然从背后偷袭！他狞笑道："你小子也配跟我抢？今天就让你知道，有些人你得罪不起！"',
+    choices: [
+      {
+        id: 'fight_back',
+        text: '反击！给他一个教训',
+        karmaChange: 5,
+        fameChange: 10,
+        successRate: 0.7,
+        specialOutcome: '你早有防备，反手将他打得落花流水！连城狼狈逃走，临走时放下狠话："这事没完！"'
+      },
+      {
+        id: 'report',
+        text: '留他性命，交给师门发落',
+        karmaChange: 15,
+        fameChange: 5,
+        successRate: 1,
+        specialOutcome: '你将他擒住，交给了门派长老处置。长老们感念你大义灭亲，对你大加赞赏。'
+      }
+    ],
+    reward: {
+      bondChange: -20
+    }
+  },
+  {
+    id: 're_yeming_deal',
+    relationshipId: 'npc_yeming',
+    triggerBond: 25,
+    type: 'special_dialogue' as const,
+    triggered: false,
+    title: '黑市情报',
+    narrative: '夜冥找到你，神秘地说："我这有个消息，关于青云山异象的，别人我不卖。看在你我交情的份上，收你成本价——五百灵石，如何？"',
+    choices: [
+      {
+        id: 'buy_info',
+        text: '买下这条情报',
+        karmaChange: 0,
+        fameChange: 0,
+        successRate: 1,
+        specialOutcome: '你付了灵石，夜冥压低声音告诉你："那异象……与上古魔主有关。小心青玄子。"'
+      },
+      {
+        id: 'refuse_info',
+        text: '太贵了，不买',
+        karmaChange: 0,
+        fameChange: 0,
+        successRate: 1,
+        specialOutcome: '你摇摇头转身离开。身后传来夜冥的笑声："嘿嘿，很快你就会回来找我的。"'
+      }
+    ],
+    reward: {
+      spiritStones: -500
+    }
+  },
+  {
+    id: 're_mohen_books',
+    relationshipId: 'npc_mohen',
+    triggerBond: 35,
+    type: 'gift' as const,
+    triggered: false,
+    title: '古籍相赠',
+    narrative: '墨痕将一套泛黄的古籍交给你："这是我多年收集的《山海异闻录》，记载了不少秘境遗迹的位置。你若喜欢，便拿去。"',
+    reward: {
+      bondChange: 20,
+      spiritStones: 0
+    }
+  }
+]
+
+export const HIDDEN_DEMON_QUESTION: DemonQuestion = {
+  id: 'demon_hidden_destiny',
+  question: '往生镜中，你看到了自己的死亡——为了救一个你最珍视的人而死。镜旁还有一行字："天命不可违，但人心可变。若现在放弃修为，便可扭转天命。你，如何选择？"',
+  hidden: true,
+  choices: [
+    {
+      id: 'accept_fate',
+      text: '"生亦何欢，死亦何苦。为救所爱，死得其所。"',
+      heartStrength: 40,
+      karmaEffect: 30,
+      outcomeText: '你平静地接受了命运。往生镜应声而碎——你做出了选择，便不再需要它了。你的道心，从来没有这么坚定过。'
+    },
+    {
+      id: 'change_fate',
+      text: '"我命由我不由天！就算是天命，我也能逆转给你看！"',
+      heartStrength: 50,
+      karmaEffect: 10,
+      outcomeText: '你悍然出手，破碎了往生镜！镜中景象寸寸崩塌，你感到命运的枷锁被你亲手斩断。从今天起，你的命运，由你自己书写！'
+    },
+    {
+      id: 'give_up_power',
+      text: '"修为没了可以再修，但人，不能不救。"',
+      heartStrength: 70,
+      karmaEffect: 50,
+      outcomeText: '你毫不犹豫地散去了全身修为。往生镜发出一声悲鸣，化作无数光点融入你的体内。你失去了力量，却获得了某种更珍贵的东西。那个最重要的人，会好好地活下去。'
+    },
+    {
+      id: 'ignore_mirror',
+      text: '"镜花水月，皆是虚妄。我只走自己选的路。"',
+      heartStrength: 30,
+      karmaEffect: 5,
+      outcomeText: '你合上眼睛，不再看镜中景象。往生镜失去了效力，悄然碎裂。你不知道镜中的未来是否会成真，但你知道——无论发生什么，你都会坦然面对。'
+    }
+  ]
+}
+
+export const NEW_SKILLS: Skill[] = [
+  {
+    id: 'qingyun_sword',
+    name: '青云十三式',
+    description: '青云派镇派剑法，剑势连绵不绝，如青云出岫，气象万千。',
+    level: 1,
+    maxLevel: 15,
+    type: 'attack',
+    tags: ['剑术', '青云', '真传']
+  },
+  {
+    id: 'cloud_sword',
+    name: '流云式',
+    description: '寒风独创的剑式，刚柔并济，流转自如，攻守兼备。',
+    level: 1,
+    maxLevel: 10,
+    type: 'defense',
+    tags: ['剑术', '身法', '防御']
+  },
+  {
+    id: 'tianyan_calculate',
+    name: '天衍神算',
+    description: '天机老人传承绝学，可推算吉凶祸福，趋利避害，夺天地之造化。',
+    level: 1,
+    maxLevel: 15,
+    type: 'support',
+    tags: ['秘传', '占卜', '天机']
+  }
+]
+
+export const SKILL_PRICES_EXTRA: Record<string, number> = {
+  qingyun_sword: 1000,
+  cloud_sword: 600,
+  tianyan_calculate: 1500
+}

@@ -14,11 +14,14 @@ const EVENT_TYPE_LABELS: Record<string, { label: string; color: string; icon: st
 export default function CavernScreen() {
   const character = useGameStore(s => s.character)
   const pendingEvent = useGameStore(s => s.pendingEvent)
+  const secretRealmProgress = useGameStore(s => s.secretRealmProgress)
   const triggerCavernEvent = useGameStore(s => s.triggerCavernEvent)
   const resolveCavernChoice = useGameStore(s => s.resolveCavernChoice)
+  const advanceSecretRealm = useGameStore(s => s.advanceSecretRealm)
   const addLog = useGameStore(s => s.addLog)
 
   const [loading, setLoading] = useState(false)
+  const [realmLoading, setRealmLoading] = useState(false)
   const [lastNarrative, setLastNarrative] = useState<string | null>(null)
   const [exploredCount, setExploredCount] = useState(0)
 
@@ -28,6 +31,12 @@ export default function CavernScreen() {
     await triggerCavernEvent()
     setExploredCount(c => c + 1)
     setLoading(false)
+  }
+
+  const handleAdvanceRealm = async () => {
+    setRealmLoading(true)
+    await advanceSecretRealm()
+    setRealmLoading(false)
   }
 
   const isChoiceAvailable = (choice: EventChoice): boolean => {
@@ -87,6 +96,59 @@ export default function CavernScreen() {
           </div>
         </div>
       </div>
+
+      {secretRealmProgress.length > 0 && secretRealmProgress[0].discovered && !pendingEvent && (
+        <div className="card mb-6" style={{ borderColor: 'rgba(139,92,246,0.5)', background: 'linear-gradient(135deg, rgba(139,92,246,0.05), rgba(212,175,55,0.05))' }}>
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="text-6xl flex-shrink-0" style={{ animation: 'sparkle 2s ease-in-out infinite' }}>🗝️</div>
+            <div className="flex-1 min-w-[300px]">
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                <h3 className="font-bold text-xl text-gold">
+                  {secretRealmProgress[0].name}
+                </h3>
+                <span className="text-xs px-2 py-0.5 rounded bg-[rgba(139,92,246,0.2)] text-info">
+                  追踪中
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded bg-[rgba(212,175,55,0.2)] text-gold">
+                  进度 {secretRealmProgress[0].stage}/{secretRealmProgress[0].totalStages}
+                </span>
+              </div>
+              <p className="text-sm text-secondary mb-3">
+                {secretRealmProgress[0].description}
+              </p>
+              <div className="mb-3">
+                <div className="flex justify-between text-xs text-secondary mb-1">
+                  <span>探索进度</span>
+                  <span>{Math.round((secretRealmProgress[0].stage / secretRealmProgress[0].totalStages) * 100)}%</span>
+                </div>
+                <div className="h-3 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border-primary)]">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-600 to-amber-500 transition-all duration-500"
+                    style={{ width: `${(secretRealmProgress[0].stage / secretRealmProgress[0].totalStages) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="text-xs text-secondary">
+                  上次探索：仙历第 {secretRealmProgress[0].lastVisitedDay || '—'} 日
+                </div>
+                {!secretRealmProgress[0].completed && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleAdvanceRealm}
+                    disabled={realmLoading || !!pendingEvent}
+                  >
+                    {realmLoading ? '🌀 推进中...' : '▶ 继续追踪线索'}
+                  </button>
+                )}
+                {secretRealmProgress[0].completed && (
+                  <span className="text-good font-bold">✨ 已完成全部探索</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!pendingEvent && !loading && !lastNarrative && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

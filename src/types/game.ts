@@ -115,6 +115,7 @@ export interface DemonQuestion {
   id: string
   question: string
   choices: DemonChoice[]
+  hidden?: boolean
 }
 
 export interface DemonChoice {
@@ -133,11 +134,15 @@ export interface Ending {
   narrative: string
   conditions: {
     minRealm?: Realm
+    maxRealm?: Realm
     minFame?: number
+    maxFame?: number
     minKarma?: number
     maxKarma?: number
     minBondSum?: number
+    maxBondSum?: number
     daoxin?: Daoxin[]
+    completedMainQuest?: string
   }
   rarity: '普通' | '稀有' | '传说' | '神话'
 }
@@ -147,6 +152,72 @@ export interface GameLog {
   screen: Screen
   narrative: string
   timestamp: number
+  category?: 'main' | 'side' | 'combat' | 'social' | 'breakthrough'
+}
+
+export interface MainQuestStep {
+  id: string
+  title: string
+  description: string
+  narrative: string
+  minDay: number
+  minRealm?: Realm
+  requiresCompleted?: string[]
+  choices: QuestChoice[]
+  reward: {
+    spiritStones?: number
+    fame?: number
+    karma?: number
+    relationshipChanges?: { id: string; bondChange: number }[]
+    skillId?: string
+    unlockEnding?: string
+  }
+}
+
+export interface MainQuest {
+  id: string
+  name: string
+  description: string
+  steps: MainQuestStep[]
+  currentStepIndex: number
+  completed: boolean
+  started: boolean
+}
+
+export interface SecretRealmProgress {
+  id: string
+  name: string
+  description: string
+  stage: number
+  totalStages: number
+  lastVisitedDay: number
+  clues: string[]
+  discovered: boolean
+  completed: boolean
+}
+
+export interface RelationshipEvent {
+  id: string
+  relationshipId: string
+  triggerBond: number
+  type: 'gift' | 'special_dialogue' | 'betrayal' | 'reconciliation' | 'romance' | 'rivalry'
+  triggered: boolean
+  title: string
+  narrative: string
+  choices?: QuestChoice[]
+  reward?: {
+    bondChange?: number
+    spiritStones?: number
+    karma?: number
+    skillId?: string
+  }
+}
+
+export interface EndingReason {
+  condition: string
+  met: boolean
+  weight: number
+  description: string
 }
 
 export interface GameState {
@@ -161,9 +232,15 @@ export interface GameState {
   logs: GameLog[]
   pendingEvent: CavernEvent | null
   pendingDemonTrial: DemonQuestion | null
+  pendingDemonFromSchedule: boolean
   breakthroughReady: boolean
   endingId: string | null
   availableEndings: string[]
+  mainQuest: MainQuest | null
+  secretRealmProgress: SecretRealmProgress[]
+  relationshipEvents: RelationshipEvent[]
+  pendingRelationshipEvent: RelationshipEvent | null
+  endingReasons: EndingReason[]
 }
 
 export const REALM_ORDER: Realm[] = [
