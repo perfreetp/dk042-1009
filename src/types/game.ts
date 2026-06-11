@@ -122,6 +122,7 @@ export interface SecretRealmResult {
   finalChoice: string
   acquiredSkillId?: string
   unlockedHiddenDemon: boolean
+  hiddenDemonTriggered?: boolean
 }
 
 export interface Character {
@@ -145,6 +146,7 @@ export interface Character {
   injuries: Injury[]
   breakthroughPrep: BreakthroughPreparation
   hiddenDemonUnlocked: boolean
+  hiddenDemonUsed: boolean
 }
 
 export interface Relationship {
@@ -355,7 +357,7 @@ export interface GameState {
   mainQuestChoices: MainQuestChoiceRecord[]
   secretRealmResults: SecretRealmResult[]
   positionHistory: { position: SectPosition; day: number }[]
-  breakthroughHistory: { realm: Realm; day: number; success: boolean; hadInjury?: boolean }[]
+  breakthroughHistory: { realm: Realm; day: number; success: boolean; hadInjury?: boolean; injuryName?: string }[]
   pendingBreakthroughPrep: boolean
 }
 

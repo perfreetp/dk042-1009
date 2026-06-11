@@ -242,6 +242,14 @@ export default function EndingScreen() {
                     {SECT_POSITION_INFO[(character?.sectPosition || 'outer') as SectPosition]?.name}
                   </span>
                 </div>
+                {character?.injuries && character.injuries.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[rgba(212,175,55,0.1)] text-xs">
+                    <span className="text-bad font-bold">🩹 未愈伤势：</span>
+                    <span className="text-secondary ml-1">
+                      {character.injuries.map(ij => `${ij.name}（剩余${ij.daysRemaining}日）`).join('、')}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -256,7 +264,7 @@ export default function EndingScreen() {
                       <span className="text-secondary">仙历第 {b.day} 日</span>
                       <span className={b.success ? 'text-good font-bold' : 'text-bad font-bold'}>
                         {b.success ? '✓' : '✗'} {b.realm}
-                        {b.hadInjury && <span className="ml-1 text-xs text-bad">[负伤]</span>}
+                        {b.hadInjury && b.injuryName && <span className="ml-1 text-xs text-bad">[留下{b.injuryName}]</span>}
                       </span>
                     </div>
                   ))}
@@ -264,6 +272,11 @@ export default function EndingScreen() {
                 <div className="mt-3 pt-3 border-t border-[rgba(139,92,246,0.15)] text-xs text-secondary">
                   成功突破 {breakthroughHistory.filter(b => b.success).length} 次，
                   失败 {breakthroughHistory.filter(b => !b.success).length} 次
+                  {breakthroughHistory.some(b => b.hadInjury) && (
+                    <span className="text-bad ml-2">
+                      · 留下伤势：{breakthroughHistory.filter(b => b.injuryName).map(b => b.injuryName).join('、')}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -316,8 +329,11 @@ export default function EndingScreen() {
                       <div key={i} className="p-2 rounded bg-[var(--bg-secondary)] text-xs">
                         <div className="font-bold text-gold mb-0.5">{r.name}</div>
                         <div className="text-secondary">最终抉择：{r.finalChoice}</div>
-                        {r.unlockedHiddenDemon && (
-                          <div className="text-good">· 解锁隐藏心魔题</div>
+                        {r.unlockedHiddenDemon && !r.hiddenDemonTriggered && (
+                          <div className="text-gold">· 解锁隐藏心魔题（尚未触发）</div>
+                        )}
+                        {r.unlockedHiddenDemon && r.hiddenDemonTriggered && (
+                          <div className="text-good">· 已触发并完成隐藏心魔题</div>
                         )}
                         {r.acquiredSkillId && (
                           <div className="text-info">· 获得特殊功法</div>

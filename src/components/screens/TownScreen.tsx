@@ -36,6 +36,7 @@ export default function TownScreen() {
   const buySkill = useGameStore(s => s.buySkill)
   const addLog = useGameStore(s => s.addLog)
   const trySectPositionUpgrade = useGameStore(s => s.trySectPositionUpgrade)
+  const currentDay = useGameStore(s => s.currentDay)
 
   const [tab, setTab] = useState<'people' | 'quests' | 'shop'>('people')
   const [loading, setLoading] = useState(false)
@@ -155,7 +156,17 @@ export default function TownScreen() {
             </div>
             <button
               className="btn btn-secondary"
-              onClick={() => trySectPositionUpgrade()}
+              onClick={() => {
+                trySectPositionUpgrade()
+                const posOrder = ['outer', 'inner', 'core', 'elder', 'grand_elder', 'sect_master'] as const
+                const nextIdx = posOrder.indexOf(character.sectPosition) + 1
+                if (nextIdx < posOrder.length) {
+                  const nextInfo = SECT_POSITION_INFO[posOrder[nextIdx]]
+                  if (character.sectFame < nextInfo.minFame || REALM_ORDER.indexOf(character.realm) < REALM_ORDER.indexOf(nextInfo.minRealm)) {
+                    addLog(`晋升条件：宗门声望 ≥ ${nextInfo.minFame}（当前 ${character.sectFame}），境界 ≥ ${nextInfo.minRealm}（当前 ${character.realm}）`)
+                  }
+                }
+              }}
               title="尝试晋升宗门职位"
             >
               🏵️ 考核晋升
@@ -254,40 +265,64 @@ export default function TownScreen() {
         </div>
       ) : tab === 'quests' ? (
         <div>
-          {mainQuest && mainQuest.started && !mainQuest.completed && (
-            <div className="card card-gold mb-6" style={{ borderColor: 'rgba(251,191,36,0.6)' }}>
-              <div className="flex items-start gap-3 mb-4">
-                <div className="text-4xl flex-shrink-0">📜</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <h3 className="section-title !mb-0">
-                      【主线】{mainQuest.name}
-                    </h3>
-                    <span className="text-xs px-2 py-0.5 rounded bg-[rgba(251,191,36,0.2)] text-gold font-bold">
-                      第 {mainQuest.currentStepIndex + 1}/{mainQuest.steps.length} 章
-                    </span>
-                  </div>
-                  <p className="text-sm text-secondary mb-3">{mainQuest.description}</p>
-                  {mainQuest.currentStepIndex < mainQuest.steps.length && (
-                    <div className="p-4 rounded-lg bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)]">
-                      <h4 className="font-bold text-gold mb-2">
-                        当前任务：{mainQuest.steps[mainQuest.currentStepIndex].title}
-                      </h4>
-                      <p className="text-sm text-secondary mb-3">
-                        {mainQuest.steps[mainQuest.currentStepIndex].description}
-                      </p>
-                      <button
-                        className="btn btn-gold"
-                        onClick={() => setActiveMainQuestStep(mainQuest.steps[mainQuest.currentStepIndex])}
-                      >
-                        ▶ 接取主线任务
-                      </button>
+          {mainQuest && !mainQuest.completed && (() => {
+            const currentStep = mainQuest.steps[mainQuest.currentStepIndex]
+            const realmMet = !currentStep?.minRealm || REALM_ORDER.indexOf(character.realm) >= REALM_ORDER.indexOf(currentStep.minRealm)
+            const dayMet = !currentStep || currentDay >= currentStep.minDay
+            const canStart = mainQuest.started || (realmMet && dayMet)
+
+            return (
+              <div className="card card-gold mb-6" style={{ borderColor: canStart ? 'rgba(251,191,36,0.6)' : 'rgba(156,163,175,0.4)' }}>
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="text-4xl flex-shrink-0">{canStart ? '📜' : '⏳'}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="section-title !mb-0">
+                        【主线】{mainQuest.name}
+                      </h3>
+                      <span className="text-xs px-2 py-0.5 rounded bg-[rgba(251,191,36,0.2)] text-gold font-bold">
+                        第 {mainQuest.currentStepIndex + 1}/{mainQuest.steps.length} 章
+                      </span>
                     </div>
-                  )}
+                    <p className="text-sm text-secondary mb-3">{mainQuest.description}</p>
+                    {canStart && currentStep ? (
+                      <div className="p-4 rounded-lg bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.2)]">
+                        <h4 className="font-bold text-gold mb-2">
+                          当前任务：{currentStep.title}
+                        </h4>
+                        <p className="text-sm text-secondary mb-3">
+                          {currentStep.description}
+                        </p>
+                        <button
+                          className="btn btn-gold"
+                          onClick={() => setActiveMainQuestStep(currentStep)}
+                        >
+                          ▶ 接取主线任务
+                        </button>
+                      </div>
+                    ) : currentStep ? (
+                      <div className="p-4 rounded-lg bg-[rgba(156,163,175,0.08)] border border-[rgba(156,163,175,0.2)]">
+                        <h4 className="font-bold text-secondary mb-2">
+                          {currentStep.title} · 等待时机
+                        </h4>
+                        <p className="text-sm text-secondary mb-2">
+                          线索尚不明朗，因缘未到，需静候天时。
+                        </p>
+                        <div className="flex gap-3 flex-wrap text-xs">
+                          {!dayMet && (
+                            <span className="text-bad">⏳ 需仙历第 {currentStep.minDay} 日之后（当前第 {currentDay} 日）</span>
+                          )}
+                          {!realmMet && (
+                            <span className="text-bad">⚡ 需达到 {currentStep.minRealm}（当前 {character.realm}）</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           <div className="card mb-6">
             <div className="flex items-center justify-between mb-4">

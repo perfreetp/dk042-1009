@@ -140,7 +140,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         preparationDays: 0,
         hasPrepared: false
       },
-      hiddenDemonUnlocked: false
+      hiddenDemonUnlocked: false,
+      hiddenDemonUsed: false
     }
 
     const openLog: GameLog = {
@@ -194,20 +195,38 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const resp = await generateDailyNarrative(currentDay, 'meditation')
     const cultivationBonus = character.daoxin === 'ambitious' ? 1.2 : 1.0
-    const spiritGain = Math.floor((5 + Math.random() * 8) * cultivationBonus)
-    const mindGain = Math.floor(2 + Math.random() * 5)
-    const progressGain = Math.floor((3 + Math.random() * 6) * cultivationBonus)
+    let spiritGain = Math.floor((5 + Math.random() * 8) * cultivationBonus)
+    let mindGain = Math.floor(2 + Math.random() * 5)
+    let progressGain = Math.floor((3 + Math.random() * 6) * cultivationBonus)
+
+    if (character.injuries && character.injuries.length > 0) {
+      let spiritPenalty = 0
+      let mindPenalty = 0
+      let progressPenalty = 0
+      character.injuries.forEach(ij => {
+        if (ij.effects.spirit) spiritPenalty += ij.effects.spirit
+        if (ij.effects.mind) mindPenalty += ij.effects.mind
+        if (ij.effects.successRatePenalty) progressPenalty += Math.floor(ij.effects.successRatePenalty * -20)
+      })
+      spiritGain = Math.max(1, spiritGain + spiritPenalty)
+      mindGain = Math.max(0, mindGain + mindPenalty)
+      progressGain = Math.max(1, progressGain + progressPenalty)
+    }
+
+    const finalSpiritGain = spiritGain
+    const finalMindGain = mindGain
+    const finalProgressGain = progressGain
 
     set(s => s.character ? {
       character: {
         ...s.character,
-        spirit: { ...s.character.spirit, value: clamp(s.character.spirit.value + spiritGain, 0, s.character.spirit.max) },
-        mind: { ...s.character.mind, value: clamp(s.character.mind.value + mindGain, 0, s.character.mind.max) },
-        realmProgress: s.character.realmProgress + progressGain
+        spirit: { ...s.character.spirit, value: clamp(s.character.spirit.value + finalSpiritGain, 0, s.character.spirit.max) },
+        mind: { ...s.character.mind, value: clamp(s.character.mind.value + finalMindGain, 0, s.character.mind.max) },
+        realmProgress: s.character.realmProgress + finalProgressGain
       }
     } : {})
 
-    addLog(`${resp.data} 灵力+${spiritGain}，神识+${mindGain}，修为进度+${progressGain}。`)
+    addLog(`${resp.data} 灵力+${finalSpiritGain}，神识+${finalMindGain}，修为进度+${finalProgressGain}。`)
     ;(get() as any)._advanceDay()
   },
 
@@ -216,20 +235,34 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (!character) return
 
     const resp = await generateDailyNarrative(currentDay, 'body_train')
-    const bodyGain = Math.floor(6 + Math.random() * 10)
-    const spiritCost = Math.floor(2 + Math.random() * 4)
-    const progressGain = Math.floor(2 + Math.random() * 5)
+    let bodyGain = Math.floor(6 + Math.random() * 10)
+    let spiritCost = Math.floor(2 + Math.random() * 4)
+    let progressGain = Math.floor(2 + Math.random() * 5)
+
+    if (character.injuries && character.injuries.length > 0) {
+      let bodyPenalty = 0
+      character.injuries.forEach(ij => {
+        if (ij.effects.body) bodyPenalty += ij.effects.body
+        if (ij.effects.successRatePenalty) bodyPenalty += Math.floor(ij.effects.successRatePenalty * -10)
+      })
+      bodyGain = Math.max(1, bodyGain + bodyPenalty)
+      progressGain = Math.max(1, progressGain + Math.floor(bodyPenalty * 0.3))
+    }
+
+    const finalBodyGain = bodyGain
+    const finalSpiritCost = spiritCost
+    const finalProgressGain = progressGain
 
     set(s => s.character ? {
       character: {
         ...s.character,
-        body: { ...s.character.body, value: clamp(s.character.body.value + bodyGain, 0, s.character.body.max) },
-        spirit: { ...s.character.spirit, value: clamp(s.character.spirit.value - spiritCost, 0, s.character.spirit.max) },
-        realmProgress: s.character.realmProgress + progressGain
+        body: { ...s.character.body, value: clamp(s.character.body.value + finalBodyGain, 0, s.character.body.max) },
+        spirit: { ...s.character.spirit, value: clamp(s.character.spirit.value - finalSpiritCost, 0, s.character.spirit.max) },
+        realmProgress: s.character.realmProgress + finalProgressGain
       }
     } : {})
 
-    addLog(`${resp.data} 体魄+${bodyGain}，灵力-${spiritCost}，修为进度+${progressGain}。`)
+    addLog(`${resp.data} 体魄+${finalBodyGain}，灵力-${finalSpiritCost}，修为进度+${finalProgressGain}。`)
     ;(get() as any)._advanceDay()
   },
 
@@ -238,22 +271,38 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (!character) return
 
     const resp = await generateDailyNarrative(currentDay, 'travel')
-    const luckGain = character.daoxin === 'free' ? 2 : 1
-    const fameGain = Math.floor(Math.random() * 4)
-    const mindGain = Math.floor(1 + Math.random() * 4)
-    const progressGain = Math.floor(1 + Math.random() * 3)
+    let luckGain = character.daoxin === 'free' ? 2 : 1
+    let fameGain = Math.floor(Math.random() * 4)
+    let mindGain = Math.floor(1 + Math.random() * 4)
+    let progressGain = Math.floor(1 + Math.random() * 3)
+
+    if (character.injuries && character.injuries.length > 0) {
+      let luckPenalty = 0
+      character.injuries.forEach(ij => {
+        if (ij.effects.luck) luckPenalty += ij.effects.luck
+        if (ij.effects.mind) mindGain += ij.effects.mind
+      })
+      luckGain = Math.max(0, luckGain + luckPenalty)
+      mindGain = Math.max(0, mindGain)
+      progressGain = Math.max(1, progressGain)
+    }
+
+    const finalLuckGain = luckGain
+    const finalFameGain = fameGain
+    const finalMindGain = mindGain
+    const finalProgressGain = progressGain
 
     set(s => s.character ? {
       character: {
         ...s.character,
-        luck: s.character.luck + luckGain,
-        fame: s.character.fame + fameGain,
-        mind: { ...s.character.mind, value: clamp(s.character.mind.value + mindGain, 0, s.character.mind.max) },
-        realmProgress: s.character.realmProgress + progressGain
+        luck: s.character.luck + finalLuckGain,
+        fame: s.character.fame + finalFameGain,
+        mind: { ...s.character.mind, value: clamp(s.character.mind.value + finalMindGain, 0, s.character.mind.max) },
+        realmProgress: s.character.realmProgress + finalProgressGain
       }
     } : {})
 
-    addLog(`${resp.data} 气运+${luckGain}，名望+${fameGain}，神识+${mindGain}，修为进度+${progressGain}。`)
+    addLog(`${resp.data} 气运+${finalLuckGain}，名望+${finalFameGain}，神识+${finalMindGain}，修为进度+${finalProgressGain}。`)
     ;(get() as any)._advanceDay()
   },
 
@@ -391,11 +440,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   triggerDemonTrial: async (fromSchedule = false) => {
     const { character } = get()
-    if (character?.hiddenDemonUnlocked && Math.random() < 0.3) {
+    if (character?.hiddenDemonUnlocked) {
       set({
         pendingDemonTrial: HIDDEN_DEMON_QUESTION,
         pendingDemonFromSchedule: fromSchedule
       })
+      set(s => s.character ? {
+        character: { ...s.character, hiddenDemonUnlocked: false, hiddenDemonUsed: true }
+      } : {})
+      if (get().secretRealmResults.length > 0) {
+        set(s => ({
+          secretRealmResults: s.secretRealmResults.map(r =>
+            r.unlockedHiddenDemon ? { ...r, hiddenDemonTriggered: true } : r
+          )
+        }))
+      }
       return
     }
     const resp = await generateRandomDemonTrial()
@@ -577,6 +636,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ? await generateShifuDialogue(npc)
       : await generateFriendDialogue(npc)
 
+    const posBonus = SECT_POSITION_INFO[character.sectPosition]?.bondBonus || 0
+
     let bondChange = 0
     if (npc.role === 'rival') {
       bondChange = Math.random() < 0.5 ? -3 : 2
@@ -588,6 +649,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bondChange = 2 + Math.floor(Math.random() * 5)
     }
 
+    if (posBonus > 0) {
+      bondChange += Math.ceil(posBonus * 0.1)
+    }
+
     set(state => ({
       relationships: state.relationships.map(r =>
         r.id === npcId ? { ...r, bond: clamp(r.bond + bondChange, -100, 100) } : r
@@ -595,7 +660,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }))
 
     const bondResp = await generateBondChangeNarrative(npc, bondChange, 'chat')
-    addLog(`【与${npc.name}交谈】"${resp.data}" ${bondResp.data}（羁绊${bondChange > 0 ? '+' : ''}${bondChange}）`)
+    const posHint = posBonus > 0 ? `（${SECT_POSITION_INFO[character.sectPosition].name}加持）` : ''
+    addLog(`【与${npc.name}交谈】"${resp.data}" ${bondResp.data}（羁绊${bondChange > 0 ? '+' : ''}${bondChange}${posHint}）`)
   },
 
   acceptQuest: (questId) => {
@@ -609,6 +675,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const { character, addLog, quests, completedQuests } = get()
     const quest = quests.find(q => q.id === questId)
     if (!quest || !character) return
+
+    const isSectQuest = quest.id.startsWith('sect_')
+    const posInfo = SECT_POSITION_INFO[character.sectPosition]
+    const multiplier = isSectQuest ? 1.0 : posInfo.questMultiplier
 
     const success = Math.random() < choice.successRate
     const rewards: string[] = []
@@ -628,18 +698,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
       if (success) {
         if (quest.reward.spiritStones) {
-          ch.spiritStones += quest.reward.spiritStones
-          rewards.push(`灵石+${quest.reward.spiritStones}`)
+          const stones = Math.floor(quest.reward.spiritStones * multiplier)
+          ch.spiritStones += stones
+          rewards.push(`灵石+${stones}${multiplier > 1 ? `（×${multiplier}）` : ''}`)
         }
         if (quest.reward.fame) {
-          ch.fame += quest.reward.fame
-          rewards.push(`名望+${quest.reward.fame}`)
+          const fame = Math.floor(quest.reward.fame * multiplier)
+          ch.fame += fame
+          rewards.push(`名望+${fame}`)
         }
         if (quest.reward.karma) {
           let rk = quest.reward.karma
           if (ch.daoxin === 'benevolent') rk = rk > 0 ? rk * 2 : rk
           ch.karma += rk
           rewards.push(`因果+${rk}`)
+        }
+        if (isSectQuest) {
+          const sectFameGain = Math.max(5, Math.floor(10 * (quest.difficulty || 1)))
+          ch.sectFame = (ch.sectFame || 0) + sectFameGain
+          rewards.push(`宗门声望+${sectFameGain}`)
         }
       }
 
@@ -878,14 +955,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (state.mainQuest && !state.mainQuest.completed) {
       const mq = state.mainQuest
       const currentStep = mq.steps[mq.currentStepIndex]
-      if (currentStep && nextDay >= currentStep.minDay && !mq.started) {
-        set(s => s.mainQuest ? {
-          mainQuest: { ...s.mainQuest, started: true }
-        } : {})
-        addLog(`【主线开启】${mq.name}：${currentStep.title}`, 'main')
+      if (currentStep && !mq.started) {
+        const realmMet = !currentStep.minRealm || REALM_ORDER.indexOf(character.realm) >= REALM_ORDER.indexOf(currentStep.minRealm)
+        const dayMet = nextDay >= currentStep.minDay
+        if (realmMet && dayMet) {
+          set(s => s.mainQuest ? {
+            mainQuest: { ...s.mainQuest, started: true }
+          } : {})
+          addLog(`【主线开启】${mq.name}：${currentStep.title}`, 'main')
 
-        if (currentStep.unlockNPCs) {
-          currentStep.unlockNPCs.forEach(npcId => unlockMainQuestNPC(npcId))
+          if (currentStep.unlockNPCs) {
+            currentStep.unlockNPCs.forEach(npcId => unlockMainQuestNPC(npcId))
+          }
         }
       }
     }
@@ -1010,6 +1091,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           newMainQuest.completed = true
         } else {
           newMainQuest.currentStepIndex = mainQuest.currentStepIndex + 1
+          newMainQuest.started = false
         }
       }
 
@@ -1190,7 +1272,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       const realmIdx = REALM_ORDER.indexOf(character.realm)
       const minRealmIdx = REALM_ORDER.indexOf(info.minRealm)
 
-      if (realmIdx >= minRealmIdx && character.fame >= info.minFame) {
+      if (realmIdx >= minRealmIdx && (character.sectFame || 0) >= info.minFame) {
         set(s => ({
           character: s.character ? {
             ...s.character,
@@ -1241,9 +1323,22 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (character.daoxin === 'cautious') baseRate += 0.05
 
     const locInfo = BREAKTHROUGH_LOCATIONS[prep.location]
-    baseRate += locInfo.successBonus
-    baseRate += prep.pills * 0.05
-    baseRate += prep.guardians.length * 0.03
+    const pillsCost = prep.pills * 100
+    const locCost = locInfo.cost
+    const totalCost = pillsCost + locCost
+    const canAfford = character.spiritStones >= totalCost
+
+    if (canAfford) {
+      baseRate += locInfo.successBonus
+      baseRate += prep.pills * 0.05
+    } else {
+      baseRate += locInfo.successBonus * 0.3
+      baseRate += prep.pills * 0.02
+    }
+
+    if (prep.guardians.length > 0) {
+      baseRate += prep.guardians.length * 0.03
+    }
 
     if (character.injuries && character.injuries.length > 0) {
       character.injuries.forEach(ij => {
@@ -1265,6 +1360,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           mind: { ...s.character.mind, value: s.character.mind.max },
           fame: clamp(s.character.fame + 15, -100, 100),
           sectFame: clamp((s.character.sectFame || 0) + 10, 0, 1000),
+          spiritStones: Math.max(0, s.character.spiritStones - totalCost),
           breakthroughPrep: {
             pills: 0,
             guardians: [],
@@ -1277,7 +1373,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         breakthroughReady: false,
         pendingBreakthroughPrep: false
       }))
-      addLog(`突破成功！晋升【${nextRealm}】，天地异象横生，宗门震动。`, 'cultivation')
+      addLog(`突破成功！晋升【${nextRealm}】，天地异象横生，宗门震动。${totalCost > 0 ? `（消耗 💎${totalCost}）` : ''}`, 'cultivation')
       setTimeout(() => trySectPositionUpgrade(), 100)
       setTimeout(() => checkEnding(false), 200)
     } else {
@@ -1294,6 +1390,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...s.character,
           realmProgress: clamp(s.character.realmProgress - progressLoss, 0, 100),
           fame: clamp(s.character.fame - fameLoss, -100, 100),
+          spiritStones: Math.max(0, s.character.spiritStones - totalCost),
           injuries: [
             ...(s.character.injuries || []),
             { id: `injury_${Date.now()}`, ...template }
@@ -1306,11 +1403,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             hasPrepared: false
           }
         } : null,
-        breakthroughHistory: [...breakthroughHistory, { realm: nextRealm, day: currentDay, success: false, hadInjury: true }],
+        breakthroughHistory: [...breakthroughHistory, { realm: nextRealm, day: currentDay, success: false, hadInjury: true, injuryName: template.name }],
         breakthroughReady: false,
         pendingBreakthroughPrep: false
       }))
-      addLog(`突破失败！道心震荡，${template.name}缠身，境界退转。需调养${template.daysRemaining}日。`, 'cultivation')
+      addLog(`突破失败！道心震荡，${template.name}缠身，境界退转。需调养${template.daysRemaining}日。${totalCost > 0 ? `（消耗 💎${totalCost}）` : ''}`, 'cultivation')
       if (pick === 'demon_seed') {
         addLog(`心魔种子潜伏于识海，下次心魔试炼将更为凶险……`, 'demon')
       }

@@ -413,12 +413,18 @@ export default function ScheduleScreen() {
             {(() => {
               const prep = character.breakthroughPrep
               const loc = BREAKTHROUGH_LOCATIONS[prep.location]
+              const pillsCost = prep.pills * 100
+              const locCost = loc.cost
+              const totalCost = pillsCost + locCost
+              const canAfford = character.spiritStones >= totalCost
               let est = 0.5 + character.realmProgress * 0.003
-                + loc.successBonus
-                + prep.pills * 0.05
-                + prep.guardians.length * 0.03
+              if (canAfford) {
+                est += loc.successBonus + prep.pills * 0.05
+              } else {
+                est += loc.successBonus * 0.3 + prep.pills * 0.02
+              }
+              est += prep.guardians.length * 0.03
               est = Math.max(5, Math.min(95, Math.round(est * 100)))
-              const totalCost = prep.pills * 100 + loc.cost
               return (
                 <div className="p-4 rounded-lg bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.3)] mb-6">
                   <div className="flex justify-between items-center mb-2">
@@ -428,6 +434,11 @@ export default function ScheduleScreen() {
                   <div className="w-full h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden mb-3">
                     <div className="h-full bg-gradient-to-r from-[var(--accent-purple)] to-[var(--accent-gold)]" style={{ width: `${est}%` }} />
                   </div>
+                  {!canAfford && (
+                    <div className="mb-3 p-2 rounded bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-xs text-bad">
+                      ⚠️ 灵石不足（需 💎{totalCost}，当前 💎{character.spiritStones}），丹药与地点加成大幅衰减
+                    </div>
+                  )}
                   <div className="flex justify-between text-xs text-secondary">
                     <span>丹药 ×{prep.pills} · 护法 ×{prep.guardians.length} · {loc.name}</span>
                     <span>💎 总计 {totalCost} 灵石</span>
