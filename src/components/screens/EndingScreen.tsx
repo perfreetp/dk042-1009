@@ -19,6 +19,7 @@ export default function EndingScreen() {
   const secretRealmResults = useGameStore(s => s.secretRealmResults)
   const positionHistory = useGameStore(s => s.positionHistory)
   const breakthroughHistory = useGameStore(s => s.breakthroughHistory)
+  const sectEventRecords = useGameStore(s => s.sectEventRecords)
   const resetGame = useGameStore(s => s.resetGame)
   const currentDay = useGameStore(s => s.currentDay)
   const quests = useGameStore(s => s.completedQuests)
@@ -58,6 +59,122 @@ export default function EndingScreen() {
     ending.rarity === '传说' ? 'rarity-legend' :
     ending.rarity === '稀有' ? 'rarity-rare' : 'rarity-common'
   ) : ''
+
+  interface ChronicleEvent {
+    day: number
+    type: 'main' | 'sect' | 'position' | 'breakthrough' | 'secret' | 'demon' | 'injury'
+    icon: string
+    title: string
+    description: string
+    success?: boolean
+  }
+
+  const chronicle = useMemo<ChronicleEvent[]>(() => {
+    const events: ChronicleEvent[] = []
+
+    if (mainQuestChoices) {
+      mainQuestChoices.forEach(c => {
+        const step = mainQuest?.steps.find(s => s.id === c.stepId)
+        events.push({
+          day: step?.minDay || 1,
+          type: 'main',
+          icon: '📜',
+          title: `主线·${c.stepTitle}`,
+          description: `选择「${c.choiceText}」${c.outcomeSummary}`,
+          success: true
+        })
+      })
+    }
+
+    if (positionHistory) {
+      positionHistory.forEach(p => {
+        const info = SECT_POSITION_INFO[p.position as SectPosition]
+        events.push({
+          day: p.day,
+          type: 'position',
+          icon: '🏵️',
+          title: '宗门晋升',
+          description: `晋升为【${info?.name || p.position}】`,
+          success: true
+        })
+      })
+    }
+
+    if (breakthroughHistory) {
+      breakthroughHistory.forEach(b => {
+        events.push({
+          day: b.day,
+          type: 'breakthrough',
+          icon: b.success ? '⚡' : '💥',
+          title: b.success ? '突破成功' : '突破失败',
+          description: `尝试突破【${b.realm}】${b.hadInjury && b.injuryName ? `，留下${b.injuryName}` : ''}`,
+          success: b.success
+        })
+      })
+    }
+
+    if (sectEventRecords) {
+      sectEventRecords.forEach(e => {
+        events.push({
+          day: e.day,
+          type: 'sect',
+          icon: '🏛️',
+          title: `宗门要事·${e.title}`,
+          description: `选择「${e.choiceText}」`,
+          success: e.success
+        })
+      })
+    }
+
+    if (secretRealmResults) {
+      secretRealmResults.forEach(r => {
+        events.push({
+          day: 50,
+          type: 'secret',
+          icon: '🗝️',
+          title: `秘境·${r.name}`,
+          description: `最终抉择：${r.finalChoice}`,
+          success: r.completed
+        })
+        if (r.hiddenDemonTriggered && r.hiddenDemonChoiceText) {
+          events.push({
+            day: 60,
+            type: 'demon',
+            icon: '🪞',
+            title: '往生镜·隐藏心魔题',
+            description: `你的答案：${r.hiddenDemonChoiceText}`,
+            success: true
+          })
+        }
+      })
+    }
+
+    if (character?.injuries && character.injuries.length > 0) {
+      character.injuries.forEach(ij => {
+        events.push({
+          day: currentDay,
+          type: 'injury',
+          icon: '🩹',
+          title: '未愈伤势',
+          description: `${ij.name}（剩余${ij.daysRemaining}日）`,
+          success: false
+        })
+      })
+    }
+
+    if (character?.hasPillToxin) {
+      events.push({
+        day: currentDay,
+        type: 'injury',
+        icon: '☠️',
+        title: '丹毒残留',
+        description: '下次突破成功率 -5%',
+        success: false
+      })
+    }
+
+    return events.sort((a, b) => a.day - b.day)
+  }, [mainQuestChoices, mainQuest, positionHistory, breakthroughHistory, sectEventRecords, secretRealmResults, character, currentDay])
 
   if (!ending || !character || !stats) {
     return (
@@ -250,6 +367,21 @@ export default function EndingScreen() {
                     </span>
                   </div>
                 )}
+                {sectEventRecords && sectEventRecords.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[rgba(212,175,55,0.1)] text-xs">
+                    <span className="text-purple-300 font-bold">🏛️ 宗门要事：</span>
+                    <div className="mt-1 space-y-1">
+                      {sectEventRecords.map((e, i) => (
+                        <div key={i} className="text-secondary flex justify-between">
+                          <span>仙历第{e.day}日</span>
+                          <span className={e.success ? 'text-good' : 'text-bad'}>
+                            {e.success ? '✓' : '✗'} {e.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -329,12 +461,19 @@ export default function EndingScreen() {
                       <div key={i} className="p-2 rounded bg-[var(--bg-secondary)] text-xs">
                         <div className="font-bold text-gold mb-0.5">{r.name}</div>
                         <div className="text-secondary">最终抉择：{r.finalChoice}</div>
+                        {r.unlockedHiddenDemon && r.hiddenDemonTriggered && r.hiddenDemonChoiceText && (
+                          <>
+                            <div className="text-purple mt-1">· 🪞 往生镜触发隐藏心魔题</div>
+                            <div className="text-secondary ml-2">你的答案：{r.hiddenDemonChoiceText}</div>
+                            <div className="text-secondary italic ml-2">结果：{r.hiddenDemonOutcome}</div>
+                          </>
+                        )}
                         {r.unlockedHiddenDemon && !r.hiddenDemonTriggered && (
                           <div className="text-gold">· 解锁隐藏心魔题（尚未触发）</div>
                         )}
-                        {r.unlockedHiddenDemon && r.hiddenDemonTriggered && (
-                          <div className="text-good">· 已触发并完成隐藏心魔题</div>
-                        )}
+                        {r.unlockedHiddenDemon && r.hiddenDemonTriggered && (!r.hiddenDemonChoiceText && (
+                          <div className="text-good">· 已触发隐藏心魔题</div>
+                        ))}
                         {r.acquiredSkillId && (
                           <div className="text-info">· 获得特殊功法</div>
                         )}
@@ -371,6 +510,47 @@ export default function EndingScreen() {
             )}
           </div>
         </div>
+
+        {chronicle.length > 0 && (
+          <div className="card mb-8" style={{ borderColor: 'rgba(139,92,246,0.4)' }}>
+            <h2 className="section-title text-xl">📖 修仙传记·大事年表</h2>
+            <p className="text-secondary text-sm mb-6">
+              按时间线回顾你这一生的重要时刻，每一步都铸就了今日的结局。
+            </p>
+            <div className="relative pl-6">
+              <div className="absolute left-2 top-2 bottom-2 w-[2px] bg-gradient-to-b from-[rgba(139,92,246,0.8)] via-[rgba(236,72,153,0.4)] to-[rgba(139,92,246,0.2)]" />
+              {chronicle.map((evt, idx) => (
+                <div key={idx} className="relative mb-4">
+                  <div className="absolute -left-6 top-1 w-4 h-4 rounded-full border-2 border-[rgba(139,92,246,0.6)] bg-[var(--bg-primary)] flex items-center justify-center">
+                    <div className={`w-2 h-2 rounded-full ${
+                      evt.success === false ? 'bg-bad' :
+                      evt.type === 'main' ? 'bg-info' :
+                      evt.type === 'sect' ? 'bg-purple-500' :
+                      evt.type === 'position' ? 'bg-gold' :
+                      evt.type === 'breakthrough' ? 'bg-orange-500' :
+                      evt.type === 'secret' ? 'bg-purple-500' :
+                      evt.type === 'demon' ? 'bg-pink-500' :
+                      'bg-gray-500'
+                    }`} />
+                  </div>
+                  <div className="ml-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-secondary">仙历{evt.day}日</span>
+                      <span className={`text-xs px-2 py-[1px] rounded-full ${
+                        evt.success === false
+                          ? 'bg-[rgba(239,68,68,0.15)] text-bad'
+                          : 'bg-[rgba(139,92,246,0.15)] text-[rgba(167,139,250,0.9)]'
+                      }`}>
+                        {evt.icon} {evt.title}
+                      </span>
+                    </div>
+                    <div className="text-sm text-primary">{evt.description}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {endingReasons.length > 0 && (
           <div className="card mb-8" style={{ borderColor: 'rgba(251,191,36,0.4)' }}>

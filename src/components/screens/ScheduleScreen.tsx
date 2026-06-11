@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import type { RiskLevel, DemonChoice, BreakthroughPreparation } from '@/types/game'
 import { REALM_ORDER } from '@/types/game'
-import { BREAKTHROUGH_LOCATIONS, INJURY_TEMPLATES } from '@/data/gameData'
+import { BREAKTHROUGH_LOCATIONS, INJURY_TEMPLATES, INJURY_HEAL_OPTIONS } from '@/data/gameData'
 
 export default function ScheduleScreen() {
   const character = useGameStore(s => s.character)
@@ -21,6 +21,7 @@ export default function ScheduleScreen() {
   const doBodyTraining = useGameStore(s => s.doBodyTraining)
   const doTravel = useGameStore(s => s.doTravel)
   const cultivateSkill = useGameStore(s => s.cultivateSkill)
+  const healInjury = useGameStore(s => s.healInjury)
 
   const [loading, setLoading] = useState<string | null>(null)
   const [showBreakthrough, setShowBreakthrough] = useState(false)
@@ -130,6 +131,42 @@ export default function ScheduleScreen() {
                       <span>剩余 {ij.daysRemaining} 日</span>
                     </div>
                   ))}
+                </div>
+                {character.hasPillToxin && (
+                  <div className="mt-2 pt-2 border-t border-[rgba(239,68,68,0.2)] text-xs">
+                    <span className="text-bad font-bold">☠️ 丹毒残留：</span>
+                    <span className="text-secondary ml-1">下次突破成功率 -5%</span>
+                  </div>
+                )}
+                <div className="mt-3 pt-2 border-t border-[rgba(239,68,68,0.2)]">
+                  <p className="text-xs text-secondary mb-2 font-bold">💊 选择疗伤方式（消耗1日）：</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {INJURY_HEAL_OPTIONS.map(opt => (
+                      <button
+                        key={opt.id}
+                        className={`text-left p-2 rounded-lg text-xs transition-all ${
+                          character.spiritStones < opt.cost
+                            ? 'bg-[rgba(156,163,175,0.05)] border border-[rgba(156,163,175,0.2)] opacity-50 cursor-not-allowed'
+                            : 'bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.3)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.5)]'
+                        }`}
+                        disabled={character.spiritStones < opt.cost || loading === 'heal'}
+                        onClick={() => withLoading('heal', () => healInjury(opt.id))}
+                      >
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-bold text-[11px]">{opt.name}</span>
+                          <span className={opt.cost > 0 ? 'text-gold' : 'text-good'}>
+                            {opt.cost > 0 ? `💎${opt.cost}` : '免费'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-secondary">{opt.description}</div>
+                        <div className="flex gap-2 mt-1 text-[10px]">
+                          <span className="text-info">恢复 +{opt.daysReduction}日</span>
+                          <span className="text-gold">成功率 {Math.round(opt.successRate * 100)}%</span>
+                          <span className="text-secondary">{opt.additionalEffect}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

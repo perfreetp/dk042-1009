@@ -120,9 +120,13 @@ export interface SecretRealmResult {
   name: string
   completed: boolean
   finalChoice: string
+  finalChoiceId: string
   acquiredSkillId?: string
   unlockedHiddenDemon: boolean
   hiddenDemonTriggered?: boolean
+  hiddenDemonChoiceId?: string
+  hiddenDemonChoiceText?: string
+  hiddenDemonOutcome?: string
 }
 
 export interface Character {
@@ -147,6 +151,7 @@ export interface Character {
   breakthroughPrep: BreakthroughPreparation
   hiddenDemonUnlocked: boolean
   hiddenDemonUsed: boolean
+  hasPillToxin: boolean
 }
 
 export interface Relationship {
@@ -309,6 +314,37 @@ export interface SecretRealmProgress {
   completed: boolean
 }
 
+export interface SectEvent {
+  id: string
+  title: string
+  description: string
+  requiredPosition: SectPosition
+  minDay: number
+  choices: QuestChoice[]
+  reward: {
+    spiritStones?: number
+    fame?: number
+    karma?: number
+    sectFame?: number
+    relationshipChanges?: { id: string; bondChange: number }[]
+  }
+  penalty: {
+    spiritStones?: number
+    fame?: number
+    karma?: number
+    sectFame?: number
+  }
+}
+
+export interface SectEventRecord {
+  id: string
+  title: string
+  day: number
+  choiceText: string
+  outcome: string
+  success: boolean
+}
+
 export interface RelationshipEvent {
   id: string
   relationshipId: string
@@ -359,6 +395,8 @@ export interface GameState {
   positionHistory: { position: SectPosition; day: number }[]
   breakthroughHistory: { realm: Realm; day: number; success: boolean; hadInjury?: boolean; injuryName?: string }[]
   pendingBreakthroughPrep: boolean
+  sectEventRecords: SectEventRecord[]
+  pendingSectEvent: SectEvent | null
 }
 
 export const REALM_ORDER: Realm[] = [

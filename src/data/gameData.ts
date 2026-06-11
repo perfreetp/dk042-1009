@@ -1269,6 +1269,13 @@ export const SECRET_REALM_DATA = {
   clues: []
 }
 
+export const SECRET_REALM_STAGE_REQS = [
+  { stage: 1, minRealm: null, requiresChoice: 'take_fragment', description: '需拾取第一枚残片' },
+  { stage: 2, minRealm: '炼气期', requiresItem: 'tianji_fragment', description: '需持有天机残片' },
+  { stage: 3, minRealm: '筑基期', requiresItem: 'tianji_fragment_complete', description: '需集齐三枚残片' },
+  { stage: 4, minRealm: '金丹期', description: '需金丹期方可面对最终抉择' }
+]
+
 export const SECRET_REALM_EVENTS = [
   {
     id: 'evt_tianji_clue_1',
@@ -1994,5 +2001,149 @@ export const MAIN_QUEST_NPCS: { id: string; name: string; title: string; descrip
     role: 'friend',
     portrait: '👩',
     minBond: 10
+  }
+]
+
+export const SECT_EVENTS = [
+  {
+    id: 'sect_elder_mediate',
+    title: '两峰纷争',
+    description: '宗门内两峰弟子为争夺一处灵脉开采权起了冲突，双方剑拔弩张，眼看就要酿成流血事件。作为长老，你必须出面调停。',
+    requiredPosition: 'elder' as const,
+    minDay: 50,
+    choices: [
+      {
+        id: 'fair_judge',
+        text: '公正评判，按宗门规矩来',
+        karmaChange: 10,
+        fameChange: 15,
+        successRate: 0.8,
+        specialOutcome: '你依据宗门铁律，公正评判了灵脉归属。两峰弟子心服口服，一场争端消弭于无形。'
+      },
+      {
+        id: 'favor_one_side',
+        text: '偏袒对你更有利的那一峰',
+        karmaChange: -10,
+        fameChange: 20,
+        successRate: 0.6,
+        specialOutcome: '你偏袒了与你交好的那一峰。虽然暂时平息了争端，但另一峰弟子心怀怨恨，为日后埋下了隐患。'
+      },
+      {
+        id: 'split_resource',
+        text: '将灵脉一分为二，各取一半',
+        karmaChange: 5,
+        fameChange: 10,
+        successRate: 0.9,
+        specialOutcome: '你提出了折中方案，将灵脉一分为二。虽然双方都不太满意，但至少避免了流血冲突。'
+      }
+    ],
+    reward: { spiritStones: 500, fame: 20, karma: 10, sectFame: 15 },
+    penalty: { spiritStones: 0, fame: -15, karma: -5, sectFame: -10 }
+  },
+  {
+    id: 'sect_elder_crisis',
+    title: '邪修来犯',
+    description: '一群邪修潜入宗门后山，企图夺取镇宗之宝。太上长老正在闭关，宗门主事的长老唯有你一人。',
+    requiredPosition: 'grand_elder' as const,
+    minDay: 70,
+    choices: [
+      {
+        id: 'fight_alone',
+        text: '亲自出手，斩杀来犯之敌',
+        karmaChange: 15,
+        fameChange: 25,
+        successRate: 0.7,
+        specialOutcome: '你亲自出手，以通天修为斩杀了所有来犯邪修。宗门上下人人敬仰，你的威名传遍修真界。'
+      },
+      {
+        id: 'set_trap',
+        text: '布下阵法，诱敌深入围歼',
+        karmaChange: 10,
+        fameChange: 20,
+        successRate: 0.85,
+        specialOutcome: '你布下九曲黄河阵，将邪修尽数困杀。无一人漏网，也无一人枉死。'
+      },
+      {
+        id: 'wake_elder',
+        text: '强行唤醒太上长老',
+        karmaChange: 0,
+        fameChange: 5,
+        successRate: 0.95,
+        specialOutcome: '你强行唤醒了太上长老。虽然击退了邪修，但太上长老修为受损，对你颇有微词。'
+      }
+    ],
+    reward: { spiritStones: 1000, fame: 30, karma: 15, sectFame: 25 },
+    penalty: { spiritStones: 0, fame: -20, karma: -10, sectFame: -15 }
+  },
+  {
+    id: 'sect_master_war',
+    title: '正邪大战',
+    description: '魔宗大举来犯，修真界风云变色。作为青云掌门，你必须率领宗门弟子迎战，决定正邪两道未来数千年的气运。',
+    requiredPosition: 'sect_master' as const,
+    minDay: 90,
+    choices: [
+      {
+        id: 'lead_charge',
+        text: '身先士卒，冲锋在前',
+        karmaChange: 20,
+        fameChange: 30,
+        successRate: 0.6,
+        specialOutcome: '你身先士卒，杀入敌阵，斩下魔宗少主首级。正道士气大振，大破敌军。但你也身受重伤，留下了终身旧患。'
+      },
+      {
+        id: 'strategy_first',
+        text: '运筹帷幄，排兵布阵',
+        karmaChange: 15,
+        fameChange: 25,
+        successRate: 0.8,
+        specialOutcome: '你布下万仙大阵，以最小的代价换取了最大的胜利。魔宗元气大伤，百年之内不敢再犯。'
+      },
+      {
+        id: 'seek_alliance',
+        text: '联合其他正道宗门共同抗敌',
+        karmaChange: 25,
+        fameChange: 35,
+        successRate: 0.7,
+        specialOutcome: '你以掌门之尊，奔走于各大门派之间，组成正道联盟。最终合众人之力，击退了魔宗入侵。'
+      }
+    ],
+    reward: { spiritStones: 2000, fame: 50, karma: 30, sectFame: 50 },
+    penalty: { spiritStones: 0, fame: -30, karma: -20, sectFame: -30 }
+  }
+]
+
+export const INJURY_HEAL_OPTIONS = [
+  {
+    id: 'close_seclusion',
+    name: '闭关疗伤',
+    description: '闭门静修，以自身灵力缓缓温养经脉。慢但稳妥，不耗灵石。',
+    cost: 0,
+    daysReduction: 1,
+    successRate: 0.9,
+    karmaChange: 0,
+    spiritStonesChange: 0,
+    additionalEffect: '稳妥无副作用'
+  },
+  {
+    id: 'seek_healer',
+    name: '寻访医修',
+    description: '请医仙白裳出手诊治。花费较高，但恢复最快，还能结下人情。',
+    cost: 300,
+    daysReduction: 3,
+    successRate: 0.95,
+    karmaChange: 5,
+    spiritStonesChange: -300,
+    additionalEffect: '白裳好感 +10，后续突破风险降低'
+  },
+  {
+    id: 'take_medicine',
+    name: '服药疗伤',
+    description: '服用珍贵丹药，快速恢复伤势。花费中等，但有一定丹毒风险。',
+    cost: 150,
+    daysReduction: 2,
+    successRate: 0.85,
+    karmaChange: 0,
+    spiritStonesChange: -150,
+    additionalEffect: '15%几率留下丹毒，下次突破成功率 -5%'
   }
 ]

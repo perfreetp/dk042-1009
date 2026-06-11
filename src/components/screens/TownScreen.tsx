@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
-import type { Quest, QuestChoice, MainQuest, RelationshipEvent } from '@/types/game'
+import type { Quest, QuestChoice, MainQuest, RelationshipEvent, SectEvent } from '@/types/game'
 import { SECT_POSITION_INFO, REALM_ORDER } from '@/types/game'
 import { generateShopItems } from '@/services/aiService'
 import type { Skill } from '@/types/game'
@@ -27,12 +27,14 @@ export default function TownScreen() {
   const quests = useGameStore(s => s.quests)
   const mainQuest = useGameStore(s => s.mainQuest)
   const pendingRelationshipEvent = useGameStore(s => s.pendingRelationshipEvent)
+  const pendingSectEvent = useGameStore(s => s.pendingSectEvent)
   const refreshTown = useGameStore(s => s.refreshTown)
   const interactWithNPC = useGameStore(s => s.interactWithNPC)
   const acceptQuest = useGameStore(s => s.acceptQuest)
   const resolveQuest = useGameStore(s => s.resolveQuest)
   const resolveMainQuestChoice = useGameStore(s => s.resolveMainQuestChoice)
   const resolveRelationshipEvent = useGameStore(s => s.resolveRelationshipEvent)
+  const resolveSectEvent = useGameStore(s => s.resolveSectEvent)
   const buySkill = useGameStore(s => s.buySkill)
   const addLog = useGameStore(s => s.addLog)
   const trySectPositionUpgrade = useGameStore(s => s.trySectPositionUpgrade)
@@ -265,6 +267,47 @@ export default function TownScreen() {
         </div>
       ) : tab === 'quests' ? (
         <div>
+          {pendingSectEvent && (
+            <div className="card mb-6" style={{ borderColor: 'rgba(168,85,247,0.6)' }}>
+              <div className="flex items-start gap-3 mb-4">
+                <div className="text-4xl flex-shrink-0">🏛️</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 className="section-title !mb-0 text-purple-400">
+                      【宗门要事】{pendingSectEvent.title}
+                    </h3>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[rgba(168,85,247,0.2)] text-purple-300 font-bold">
+                      {SECT_POSITION_INFO[pendingSectEvent.requiredPosition]?.name}专属
+                    </span>
+                  </div>
+                  <p className="text-sm text-secondary mb-4">{pendingSectEvent.description}</p>
+                  <div className="space-y-2">
+                    {pendingSectEvent.choices.map(c => (
+                      <button
+                        key={c.id}
+                        className="w-full text-left p-3 rounded-lg bg-[rgba(168,85,247,0.08)] border border-[rgba(168,85,247,0.2)] hover:border-[rgba(168,85,247,0.5)] hover:bg-[rgba(168,85,247,0.15)] transition-all"
+                        onClick={() => resolveSectEvent(c)}
+                      >
+                        <div className="font-bold mb-1">{c.text}</div>
+                        <div className="text-xs text-secondary flex gap-3">
+                          <span className={c.karmaChange > 0 ? 'text-good' : c.karmaChange < 0 ? 'text-bad' : ''}>
+                            因果{c.karmaChange > 0 ? '+' : ''}{c.karmaChange}
+                          </span>
+                          <span className={c.fameChange > 0 ? 'text-info' : c.fameChange < 0 ? 'text-bad' : ''}>
+                            名望{c.fameChange > 0 ? '+' : ''}{c.fameChange}
+                          </span>
+                          <span className="text-gold">
+                            成功率 {Math.round(c.successRate * 100)}%
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {mainQuest && !mainQuest.completed && (() => {
             const currentStep = mainQuest.steps[mainQuest.currentStepIndex]
             const realmMet = !currentStep?.minRealm || REALM_ORDER.indexOf(character.realm) >= REALM_ORDER.indexOf(currentStep.minRealm)

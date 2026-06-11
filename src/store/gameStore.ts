@@ -4,14 +4,16 @@ import type {
   Attribute, Relationship, Quest, QuestChoice, EventChoice,
   DemonChoice, RiskLevel, GameLog, Skill, EventOutcome, Screen,
   MainQuestStep, RelationshipEvent, EndingReason, SectPosition,
-  Injury, MainQuestChoiceRecord, SecretRealmResult, BreakthroughPreparation
+  Injury, MainQuestChoiceRecord, SecretRealmResult, BreakthroughPreparation,
+  SectEvent, SectEventRecord
 } from '@/types/game'
 import { ORIGIN_INFO, DAOXIN_INFO, REALM_ORDER, SECT_POSITION_INFO } from '@/types/game'
 import {
   ENDINGS, STARTER_SKILLS, MAIN_QUESTS, SECRET_REALM_DATA,
   SECRET_REALM_EVENTS, RELATIONSHIP_EVENTS_DATA, HIDDEN_DEMON_QUESTION,
   NEW_SKILLS, SKILL_PRICES_EXTRA, SECT_QUESTS, INJURY_TEMPLATES,
-  BREAKTHROUGH_LOCATIONS, MAIN_QUEST_NPCS
+  BREAKTHROUGH_LOCATIONS, MAIN_QUEST_NPCS, SECRET_REALM_STAGE_REQS,
+  SECT_EVENTS, INJURY_HEAL_OPTIONS
 } from '@/data/gameData'
 import {
   generateDailyNarrative, generateRandomCavernEvent, generateRandomDemonTrial,
@@ -65,6 +67,9 @@ interface GameActions {
   unlockMainQuestNPC: (npcId: string) => void
   addInjury: (injury: Omit<Injury, 'id'>) => void
   healInjuriesByDay: () => void
+  checkSectEvents: () => void
+  resolveSectEvent: (choice: QuestChoice) => void
+  healInjury: (optionId: string) => void
 }
 
 const initialState: GameState = {
@@ -92,7 +97,9 @@ const initialState: GameState = {
   secretRealmResults: [],
   positionHistory: [],
   breakthroughHistory: [],
-  pendingBreakthroughPrep: false
+  pendingBreakthroughPrep: false,
+  sectEventRecords: [],
+  pendingSectEvent: null
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -141,7 +148,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         hasPrepared: false
       },
       hiddenDemonUnlocked: false,
-      hiddenDemonUsed: false
+      hiddenDemonUsed: false,
+      hasPillToxin: false
     }
 
     const openLog: GameLog = {
@@ -328,13 +336,46 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   resolveCavernChoice: (choice) => {
-    const { character, addLog, pendingEvent, secretRealmProgress, secretRealmResults } = get()
+    const { character, addLog, pendingEvent, secretRealmProgress, secretRealmResults, inventory } = get()
     if (!character || !pendingEvent) return
 
-    const isSecretRealm = pendingEvent.id && pendingEvent.id.startsWith('secret_realm')
+    const isSecretRealm = pendingEvent.id && (pendingEvent.id.startsWith('evt_tianji') || pendingEvent.id.startsWith('secret_realm'))
+    const isRealmStage1 = pendingEvent.id === 'evt_tianji_clue_1'
+    const isRealmStage2 = pendingEvent.id === 'evt_tianji_clue_2'
+    const isRealmStage3 = pendingEvent.id === 'evt_tianji_entrance'
     const outcome = randomOutcome(choice.outcomes) as EventOutcome
     let narrative = outcome.narrative
     const changes: string[] = []
+
+    let wrongChoice = false
+    let newInventory = [...inventory]
+
+    if (isSecretRealm) {
+      if (isRealmStage1) {
+        if (choice.id === 'take_fragment') {
+          if (!newInventory.includes('tianji_fragment')) {
+            newInventory.push('tianji_fragment')
+            changes.push('获得天机残片·壹')
+          }
+        } else {
+          wrongChoice = true
+        }
+      } else if (isRealmStage2) {
+        if (choice.id === 'show_fragment') {
+          newInventory = newInventory.filter(i => i !== 'tianji_fragment')
+          if (!newInventory.includes('tianji_fragment_complete')) {
+            newInventory.push('tianji_fragment_complete')
+            changes.push('集齐三枚残片')
+          }
+        } else if (choice.id === 'ignore_old_man') {
+          wrongChoice = true
+        }
+      } else if (isRealmStage3) {
+        if (choice.id !== 'enter_realm') {
+          wrongChoice = true
+        }
+      }
+    }
 
     set(state => {
       if (!state.character) return {}
@@ -396,7 +437,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         const realm = state.secretRealmProgress[0]
         const isFinalStage = realm.stage >= realm.totalStages
 
-        if (isFinalStage) {
+        if (wrongChoice) {
+          newSecretRealmProgress = state.secretRealmProgress.map(r =>
+            r.id === realm.id ? { ...r, stage: Math.max(0, r.stage - 1) } : r
+          )
+        } else if (isFinalStage) {
           newSecretRealmProgress = state.secretRealmProgress.map(r =>
             r.id === realm.id ? { ...r, completed: true } : r
           )
@@ -405,6 +450,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             name: realm.name,
             completed: true,
             finalChoice: choice.text,
+            finalChoiceId: choice.id,
             acquiredSkillId: outcome.skillGain?.id,
             unlockedHiddenDemon: outcome.unlocksHiddenDemon === true
           }
@@ -412,6 +458,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
           if (outcome.unlocksHiddenDemon) {
             ch.hiddenDemonUnlocked = true
+            setTimeout(() => {
+              addLog('🪞 往生镜中映出你的命数，一道隐藏的心魔题已在你识海中种下。下次心魔试炼时，它将会出现……', 'demon')
+            }, 100)
           }
         }
       }
@@ -429,12 +478,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       return {
         character: ch,
         secretRealmProgress: updatedSrp,
-        secretRealmResults: newSecretRealmResults
+        secretRealmResults: newSecretRealmResults,
+        inventory: newInventory
       }
     })
 
     if (changes.length) narrative += ` (${changes.join('，')})`
-    addLog(`【${pendingEvent.title}】${narrative}`)
+    addLog(`【${pendingEvent.title}】${narrative}${wrongChoice ? ' （选错了，下次再来吧）' : ''}`)
     set({ pendingEvent: null })
   },
 
@@ -468,6 +518,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const { character, addLog, pendingDemonTrial } = get()
     if (!character || !pendingDemonTrial) return
 
+    const isHidden = pendingDemonTrial.hidden === true
+
     let heartStrength = choice.heartStrength
     if (character.daoxin === 'detached') heartStrength = Math.floor(heartStrength * 1.3)
     if (character.daoxin === 'ambitious' && heartStrength < 0) heartStrength = Math.floor(heartStrength * 1.4)
@@ -476,20 +528,32 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (character.daoxin === 'benevolent') karmaEffect = karmaEffect > 0 ? karmaEffect * 2 : karmaEffect * 2
 
     set(state => {
-      if (!state.character) return {}
+      let newResults = state.secretRealmResults
+      if (isHidden && newResults.length > 0) {
+        newResults = newResults.map(r =>
+          r.unlockedHiddenDemon ? {
+            ...r,
+            hiddenDemonChoiceId: choice.id,
+            hiddenDemonChoiceText: choice.text,
+            hiddenDemonOutcome: choice.outcomeText
+          } : r
+        )
+      }
       return {
         character: {
-          ...state.character,
-          karma: state.character.karma + karmaEffect,
+          ...state.character!,
+          karma: state.character!.karma + karmaEffect,
           mind: {
-            ...state.character.mind,
-            value: clamp(state.character.mind.value + Math.floor(heartStrength / 2), 0, state.character.mind.max)
+            ...state.character!.mind,
+            value: clamp(state.character!.mind.value + Math.floor(heartStrength / 2), 0, state.character!.mind.max)
           }
-        }
+        },
+        secretRealmResults: newResults
       }
     })
 
-    addLog(`【心魔试炼】${choice.outcomeText}（心之力${heartStrength > 0 ? '+' : ''}${heartStrength}，因果${karmaEffect > 0 ? '+' : ''}${karmaEffect}）`)
+    const prefix = isHidden ? '【往生镜·心魔试炼】' : '【心魔试炼】'
+    addLog(`${prefix}${choice.outcomeText}（心之力${heartStrength > 0 ? '+' : ''}${heartStrength}，因果${karmaEffect > 0 ? '+' : ''}${karmaEffect}）`)
 
     if (heartStrength >= 30) {
       set(state => state.character ? {
@@ -511,6 +575,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const { character, addLog, pendingDemonTrial } = get()
     if (!character || !pendingDemonTrial) return
 
+    const isHidden = pendingDemonTrial.hidden === true
+
     let heartStrength = choice.heartStrength
     if (character.daoxin === 'detached') heartStrength = Math.floor(heartStrength * 1.3)
     if (character.daoxin === 'ambitious' && heartStrength < 0) heartStrength = Math.floor(heartStrength * 1.4)
@@ -519,20 +585,32 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (character.daoxin === 'benevolent') karmaEffect = karmaEffect > 0 ? karmaEffect * 2 : karmaEffect * 2
 
     set(state => {
-      if (!state.character) return {}
+      let newResults = state.secretRealmResults
+      if (isHidden && newResults.length > 0) {
+        newResults = newResults.map(r =>
+          r.unlockedHiddenDemon ? {
+            ...r,
+            hiddenDemonChoiceId: choice.id,
+            hiddenDemonChoiceText: choice.text,
+            hiddenDemonOutcome: choice.outcomeText
+          } : r
+        )
+      }
       return {
         character: {
-          ...state.character,
-          karma: state.character.karma + karmaEffect,
+          ...state.character!,
+          karma: state.character!.karma + karmaEffect,
           mind: {
-            ...state.character.mind,
-            value: clamp(state.character.mind.value + Math.floor(heartStrength / 2), 0, state.character.mind.max)
+            ...state.character!.mind,
+            value: clamp(state.character!.mind.value + Math.floor(heartStrength / 2), 0, state.character!.mind.max)
           }
-        }
+        },
+        secretRealmResults: newResults
       }
     })
 
-    addLog(`【心魔试炼】${choice.outcomeText}（心之力${heartStrength > 0 ? '+' : ''}${heartStrength}，因果${karmaEffect > 0 ? '+' : ''}${karmaEffect}）`)
+    const prefix = isHidden ? '【往生镜·心魔试炼】' : '【心魔试炼】'
+    addLog(`${prefix}${choice.outcomeText}（心之力${heartStrength > 0 ? '+' : ''}${heartStrength}，因果${karmaEffect > 0 ? '+' : ''}${karmaEffect}）`)
 
     if (heartStrength >= 30) {
       set(state => state.character ? {
@@ -934,7 +1012,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   _advanceDay: () => {
-    const { character, currentDay, maxDays, addLog, checkEnding, mainQuest, relationshipEvents, relationships, healInjuriesByDay, unlockMainQuestNPC } = get()
+    const { character, currentDay, maxDays, addLog, checkEnding, mainQuest, relationshipEvents, relationships, healInjuriesByDay, unlockMainQuestNPC, checkSectEvents } = get()
     if (!character) return
 
     const nextDay = currentDay + 1
@@ -989,6 +1067,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         break
       }
     }
+
+    checkSectEvents()
 
     if (nextDay > maxDays || (character.realm === '大乘期' && character.realmProgress >= 100)) {
       checkEnding(true)
@@ -1130,7 +1210,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   advanceSecretRealm: async () => {
-    const { character, secretRealmProgress, addLog } = get()
+    const { character, secretRealmProgress, addLog, inventory } = get()
     if (!character || secretRealmProgress.length === 0) return
 
     const realm = secretRealmProgress[0]
@@ -1150,6 +1230,22 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       return
     }
 
+    const stageReq = SECRET_REALM_STAGE_REQS[stage]
+    if (stageReq) {
+      if (stageReq.minRealm) {
+        const realmIdx = REALM_ORDER.indexOf(character.realm)
+        const minRealmIdx = REALM_ORDER.indexOf(stageReq.minRealm as any)
+        if (realmIdx < minRealmIdx) {
+          addLog(`秘境此处禁制非你目前修为可破。需【${stageReq.minRealm}】方能继续（当前${character.realm}）。`)
+          return
+        }
+      }
+      if (stageReq.requiresItem && !inventory.includes(stageReq.requiresItem)) {
+        addLog(`缺少关键物品。${stageReq.description}。`)
+        return
+      }
+    }
+
     const event = SECRET_REALM_EVENTS[stage]
     set(s => ({
       pendingEvent: event as GameState['pendingEvent'],
@@ -1159,8 +1255,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           : r
       )
     }))
-
-    addLog(`【天机秘境·阶段${stage + 1}】${event.title}`)
+    addLog(`【天机秘境·第 ${stage + 1} 阶段】${event.title}`)
   },
 
   resolveRelationshipEvent: (choice) => {
@@ -1346,6 +1441,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       })
     }
 
+    if (character.hasPillToxin) {
+      baseRate -= 0.05
+    }
+
     baseRate = clamp(baseRate, 0.05, 0.95)
     const success = Math.random() < baseRate
 
@@ -1361,6 +1460,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           fame: clamp(s.character.fame + 15, -100, 100),
           sectFame: clamp((s.character.sectFame || 0) + 10, 0, 1000),
           spiritStones: Math.max(0, s.character.spiritStones - totalCost),
+          hasPillToxin: false,
           breakthroughPrep: {
             pills: 0,
             guardians: [],
@@ -1468,5 +1568,167 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         }
       }
     })
+  },
+
+  checkSectEvents: () => {
+    const { character, currentDay, sectEventRecords, pendingSectEvent, addLog } = get()
+    if (!character || pendingSectEvent) return
+
+    const posOrder: SectPosition[] = ['outer', 'inner', 'core', 'elder', 'grand_elder', 'sect_master']
+    const posIdx = posOrder.indexOf(character.sectPosition)
+
+    for (const event of SECT_EVENTS) {
+      const reqIdx = posOrder.indexOf(event.requiredPosition)
+      if (posIdx < reqIdx) continue
+      if (currentDay < event.minDay) continue
+      if (sectEventRecords.some(r => r.id === event.id)) continue
+
+      set({ pendingSectEvent: event })
+      addLog(`【宗门要事·${SECT_POSITION_INFO[event.requiredPosition].name}专属】${event.title}`, 'main')
+      break
+    }
+  },
+
+  resolveSectEvent: (choice) => {
+    const { character, pendingSectEvent, currentDay, addLog, sectEventRecords } = get()
+    if (!character || !pendingSectEvent) return
+
+    const success = Math.random() < choice.successRate
+    const rewards: string[] = []
+
+    set(state => {
+      if (!state.character) return {}
+      const ch = { ...state.character }
+
+      let karma = choice.karmaChange
+      if (ch.daoxin === 'benevolent') karma = karma > 0 ? karma * 2 : karma * 2
+      if (ch.daoxin === 'free') karma = Math.floor(karma / 2)
+      ch.karma += karma
+      if (karma) rewards.push(`因果${karma > 0 ? '+' : ''}${karma}`)
+
+      ch.fame += choice.fameChange
+      if (choice.fameChange) rewards.push(`名望${choice.fameChange > 0 ? '+' : ''}${choice.fameChange}`)
+
+      if (success) {
+        const r = pendingSectEvent.reward
+        if (r.spiritStones) { ch.spiritStones += r.spiritStones; rewards.push(`灵石+${r.spiritStones}`) }
+        if (r.fame) { ch.fame += r.fame; rewards.push(`名望+${r.fame}`) }
+        if (r.karma) { ch.karma += r.karma; rewards.push(`因果+${r.karma}`) }
+        if (r.sectFame) { ch.sectFame = (ch.sectFame || 0) + r.sectFame; rewards.push(`宗门声望+${r.sectFame}`) }
+        if (r.relationshipChanges) {
+          const newRels = state.relationships.map(rel => {
+            const change = r.relationshipChanges?.find(c => c.id === rel.id)
+            if (change) {
+              return { ...rel, bond: clamp(rel.bond + change.bondChange, -100, 100) }
+            }
+            return rel
+          })
+          return {
+            character: ch,
+            relationships: newRels,
+            pendingSectEvent: null,
+            sectEventRecords: [...sectEventRecords, {
+              id: pendingSectEvent.id,
+              title: pendingSectEvent.title,
+              day: currentDay,
+              choiceText: choice.text,
+              outcome: choice.specialOutcome || '',
+              success: true
+            }]
+          }
+        }
+      } else {
+        const p = pendingSectEvent.penalty
+        if (p.fame) { ch.fame = clamp(ch.fame + p.fame, -100, 100); rewards.push(`名望${p.fame}`) }
+        if (p.karma) { ch.karma += p.karma; rewards.push(`因果${p.karma}`) }
+        if (p.sectFame) { ch.sectFame = Math.max(0, (ch.sectFame || 0) + p.sectFame); rewards.push(`宗门声望${p.sectFame}`) }
+      }
+
+      return {
+        character: ch,
+        pendingSectEvent: null,
+        sectEventRecords: [...sectEventRecords, {
+          id: pendingSectEvent.id,
+          title: pendingSectEvent.title,
+          day: currentDay,
+          choiceText: choice.text,
+          outcome: success ? (choice.specialOutcome || '') : '事情未能如预期般发展，留下了些许遗憾。',
+          success: success
+        }]
+      }
+    })
+
+    const resultText = success
+      ? choice.specialOutcome || '事情处理得十分妥当。'
+      : '事情似乎出了些变数，未能完全如愿。'
+    addLog(`【${pendingSectEvent.title}】${resultText}（${rewards.join('，') || '无特殊影响'}）`, 'main')
+  },
+
+  healInjury: (optionId) => {
+    const { character, addLog, relationships, currentDay } = get()
+    if (!character || !character.injuries || character.injuries.length === 0) return
+
+    const option = INJURY_HEAL_OPTIONS.find(o => o.id === optionId)
+    if (!option) return
+
+    if (character.spiritStones < option.cost) {
+      addLog(`灵石不足，无法选择【${option.name}】。`)
+      return
+    }
+
+    const success = Math.random() < option.successRate
+    const changes: string[] = []
+
+    set(state => {
+      if (!state.character) return {}
+      const ch = { ...state.character }
+
+      ch.spiritStones += option.spiritStonesChange
+      if (option.spiritStonesChange) changes.push(`灵石${option.spiritStonesChange > 0 ? '+' : ''}${option.spiritStonesChange}`)
+
+      if (ch.injuries && ch.injuries.length > 0) {
+        const newInjuries = success
+          ? ch.injuries.map(ij => ({ ...ij, daysRemaining: Math.max(0, ij.daysRemaining - option.daysReduction) }))
+              .filter(ij => ij.daysRemaining > 0)
+          : ch.injuries
+        const healed = ch.injuries.length - newInjuries.length
+        if (success && option.daysReduction > 0) {
+          changes.push(`伤势恢复加速${option.daysReduction}日`)
+          if (healed > 0) changes.push(`${healed}处伤势痊愈`)
+        }
+        ch.injuries = newInjuries
+      }
+
+      if (option.karmaChange) {
+        ch.karma += option.karmaChange
+        changes.push(`因果${option.karmaChange > 0 ? '+' : ''}${option.karmaChange}`)
+      }
+
+      if (option.id === 'seek_healer') {
+        const healer = state.relationships.find(r => r.id === 'npc_baishang')
+        if (healer) {
+          const newRels = state.relationships.map(r =>
+            r.id === 'npc_baishang' ? { ...r, bond: clamp(r.bond + 10, -100, 100) } : r
+          )
+          changes.push('白裳好感+10')
+          return { character: ch, relationships: newRels }
+        }
+      }
+
+      if (option.id === 'take_medicine' && success && Math.random() < 0.15) {
+        ch.hasPillToxin = true
+        changes.push('丹毒残留，下次突破成功率-5%')
+      }
+
+      return { character: ch }
+    })
+
+    if (success) {
+      addLog(`【疗伤·${option.name}】${option.description}（${changes.join('，') || '无特殊效果'}）`, 'cultivation')
+    } else {
+      addLog(`【疗伤·${option.name}】似乎没有什么效果，还需耐心调养。（${changes.join('，') || '无特殊效果'}）`, 'cultivation')
+    }
+
+    ;(get() as any)._advanceDay()
   }
 }))
