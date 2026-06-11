@@ -21,6 +21,109 @@ export interface Skill {
   tags: string[]
 }
 
+export type SectPosition = 'outer' | 'inner' | 'core' | 'elder' | 'grand_elder' | 'sect_master'
+
+export const SECT_POSITION_INFO: Record<SectPosition, {
+  name: string
+  description: string
+  minFame: number
+  minRealm: Realm
+  questMultiplier: number
+  bondBonus: number
+}> = {
+  outer: {
+    name: '外门弟子',
+    description: '初入宗门，打杂修行，能接取宗门基础任务。',
+    minFame: 0,
+    minRealm: '炼气期',
+    questMultiplier: 1.0,
+    bondBonus: 0
+  },
+  inner: {
+    name: '内门弟子',
+    description: '宗门重点培养对象，可修习上乘功法，有机会得长老指点。',
+    minFame: 30,
+    minRealm: '筑基期',
+    questMultiplier: 1.5,
+    bondBonus: 5
+  },
+  core: {
+    name: '核心弟子',
+    description: '宗门种子，传承侯选，地位尊崇，资源充沛。',
+    minFame: 60,
+    minRealm: '金丹期',
+    questMultiplier: 2.0,
+    bondBonus: 10
+  },
+  elder: {
+    name: '宗门长老',
+    description: '开宗立派的人物之一，掌管一峰或一职，决策宗门事务。',
+    minFame: 100,
+    minRealm: '元婴期',
+    questMultiplier: 3.0,
+    bondBonus: 20
+  },
+  grand_elder: {
+    name: '太上长老',
+    description: '宗门底蕴，不问俗事，只在宗门存亡之际出手。',
+    minFame: 150,
+    minRealm: '化神期',
+    questMultiplier: 4.0,
+    bondBonus: 30
+  },
+  sect_master: {
+    name: '掌门',
+    description: '一宗之主，执掌生杀，一言一行皆牵动修真界风云。',
+    minFame: 200,
+    minRealm: '渡劫期',
+    questMultiplier: 5.0,
+    bondBonus: 50
+  }
+}
+
+export type InjuryType = 'meridian_damage' | 'foundation_crack' | 'demon_seed' | 'debt_favor' | 'loss_reputation' | 'none'
+
+export interface Injury {
+  id: string
+  type: InjuryType
+  name: string
+  description: string
+  severity: number
+  daysRemaining: number
+  effects: {
+    spirit?: number
+    body?: number
+    mind?: number
+    luck?: number
+    successRatePenalty?: number
+  }
+}
+
+export interface BreakthroughPreparation {
+  pills: number
+  guardians: string[]
+  location: 'sect' | 'cavern' | 'mountain_peak' | 'secret_realm'
+  preparationDays: number
+  hasPrepared: boolean
+}
+
+export interface MainQuestChoiceRecord {
+  stepId: string
+  stepTitle: string
+  choiceId: string
+  choiceText: string
+  outcomeSummary: string
+}
+
+export interface SecretRealmResult {
+  id: string
+  name: string
+  completed: boolean
+  finalChoice: string
+  acquiredSkillId?: string
+  unlockedHiddenDemon: boolean
+}
+
 export interface Character {
   name: string
   origin: Origin
@@ -34,9 +137,14 @@ export interface Character {
   luck: number
   karma: number
   fame: number
+  sectFame: number
+  sectPosition: SectPosition
   spiritStones: number
   skills: Skill[]
   maxSkills: number
+  injuries: Injury[]
+  breakthroughPrep: BreakthroughPreparation
+  hiddenDemonUnlocked: boolean
 }
 
 export interface Relationship {
@@ -47,6 +155,7 @@ export interface Relationship {
   bond: number
   role: 'master' | 'friend' | 'lover' | 'enemy' | 'rival' | 'disciple' | 'acquaintance'
   portrait: string
+  autoUnlocked?: boolean
 }
 
 export interface Quest {
@@ -62,8 +171,8 @@ export interface Quest {
     relationshipId?: string
   }
   choices: QuestChoice[]
-  completed: boolean
-  type: 'commission' | 'combat' | 'social' | 'secret'
+  completed?: boolean
+  type: 'commission' | 'combat' | 'social' | 'secret' | 'cultivation'
 }
 
 export interface QuestChoice {
@@ -109,6 +218,7 @@ export interface EventOutcome {
   realmProgressChange?: number
   skillGain?: Skill
   relationshipChange?: { id: string; bondChange: number }
+  unlocksHiddenDemon?: boolean
 }
 
 export interface DemonQuestion {
@@ -152,7 +262,7 @@ export interface GameLog {
   screen: Screen
   narrative: string
   timestamp: number
-  category?: 'main' | 'side' | 'combat' | 'social' | 'breakthrough'
+  category?: 'main' | 'side' | 'combat' | 'social' | 'breakthrough' | 'cultivation' | 'demon'
 }
 
 export interface MainQuestStep {
@@ -163,6 +273,7 @@ export interface MainQuestStep {
   minDay: number
   minRealm?: Realm
   requiresCompleted?: string[]
+  unlockNPCs?: string[]
   choices: QuestChoice[]
   reward: {
     spiritStones?: number
@@ -241,6 +352,11 @@ export interface GameState {
   relationshipEvents: RelationshipEvent[]
   pendingRelationshipEvent: RelationshipEvent | null
   endingReasons: EndingReason[]
+  mainQuestChoices: MainQuestChoiceRecord[]
+  secretRealmResults: SecretRealmResult[]
+  positionHistory: { position: SectPosition; day: number }[]
+  breakthroughHistory: { realm: Realm; day: number; success: boolean; hadInjury?: boolean }[]
+  pendingBreakthroughPrep: boolean
 }
 
 export const REALM_ORDER: Realm[] = [

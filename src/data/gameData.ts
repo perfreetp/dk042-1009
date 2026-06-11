@@ -1054,6 +1054,7 @@ export const MAIN_QUESTS = {
         narrative: '你在城镇中听到路人议论：青云山最近几日每到夜晚就会有青光冲天，据说青云派的人已经封锁了山路。有人说那是异宝出世，也有人说那是妖孽作祟。你正思考间，一位青云派弟子匆匆跑来，似乎在找人。',
         minDay: 5,
         minRealm: '炼气期',
+        unlockNPCs: ['npc_qingxuan', 'npc_hanfeng'],
         choices: [
           {
             id: 'volunteer',
@@ -1094,6 +1095,7 @@ export const MAIN_QUESTS = {
         minDay: 15,
         minRealm: '炼气期',
         requiresCompleted: ['mq_qingyun_1'],
+        unlockNPCs: ['npc_linger', 'npc_mohen'],
         choices: [
           {
             id: 'destroy_now',
@@ -1135,6 +1137,7 @@ export const MAIN_QUESTS = {
         minDay: 25,
         minRealm: '筑基期',
         requiresCompleted: ['mq_qingyun_2'],
+        unlockNPCs: ['npc_baishang'],
         choices: [
           {
             id: 'defend_front',
@@ -1427,7 +1430,8 @@ export const SECRET_REALM_EVENTS = [
             narrative: '你看向往生镜，镜面泛起涟漪。镜中显现的画面……让你久久无语。你获得了一道隐藏的心魔题目，答案只有你自己知道。',
             karmaChange: 20,
             mindChange: 30,
-            luckChange: 20
+            luckChange: 20,
+            unlocksHiddenDemon: true
           }
         ]
       },
@@ -1665,3 +1669,330 @@ export const SKILL_PRICES_EXTRA: Record<string, number> = {
   cloud_sword: 600,
   tianyan_calculate: 1500
 }
+
+import type { SectPosition, Injury, InjuryType, BreakthroughPreparation } from '@/types/game'
+
+export const SECT_QUESTS: Record<SectPosition, Quest[]> = {
+  outer: [
+    {
+      id: 'sect_outer_herb',
+      title: '【宗门】药园洒扫',
+      type: 'social',
+      difficulty: 1,
+      description: '负责照料宗门药园的灵草，按时浇水除虫。虽是杂活，却能熟悉灵药习性。',
+      choices: [
+        {
+          id: 'careful',
+          text: '认真细致地照料每一株灵草',
+          karmaChange: 5,
+          fameChange: 5,
+          successRate: 0.95,
+          specialOutcome: '你将药园打理得井井有条，管事长老对你赞不绝口。'
+        },
+        {
+          id: 'casual',
+          text: '按部就班完成份内之事',
+          karmaChange: 0,
+          fameChange: 2,
+          successRate: 1,
+          specialOutcome: '任务完成，无功无过。'
+        }
+      ],
+      reward: { spiritStones: 50, fame: 5, karma: 3 }
+    },
+    {
+      id: 'sect_outer_patrol',
+      title: '【宗门】山门巡守',
+      type: 'combat',
+      difficulty: 2,
+      description: '与几位外门弟子一起巡视青云山外围，驱赶低阶妖兽。',
+      choices: [
+        {
+          id: 'vanguard',
+          text: '一马当先，斩杀来犯妖兽',
+          karmaChange: 5,
+          fameChange: 10,
+          successRate: 0.7,
+          specialOutcome: '你勇猛无前，连斩三头妖兽！同门纷纷投来敬佩的目光。'
+        },
+        {
+          id: 'coordinate',
+          text: '与同门配合，稳扎稳打',
+          karmaChange: 8,
+          fameChange: 8,
+          successRate: 0.9,
+          specialOutcome: '你们配合默契，无伤击退了妖兽群。'
+        }
+      ],
+      reward: { spiritStones: 100, fame: 10, karma: 5 }
+    }
+  ],
+  inner: [
+    {
+      id: 'sect_inner_escort',
+      title: '【宗门】护送物资',
+      type: 'combat',
+      difficulty: 3,
+      description: '护送一批宗门物资前往山下城镇，据说途中可能有山贼或邪修出没。',
+      choices: [
+        {
+          id: 'force',
+          text: '走大路，以武力震慑宵小',
+          karmaChange: 5,
+          fameChange: 15,
+          successRate: 0.6,
+          specialOutcome: '大张旗鼓果然吸引了邪修，你力战退敌，名声大振！'
+        },
+        {
+          id: 'stealth',
+          text: '潜行小路，避开危险',
+          karmaChange: 3,
+          fameChange: 5,
+          successRate: 0.9,
+          specialOutcome: '你们悄然抵达目的地，物资毫发无损。'
+        }
+      ],
+      reward: { spiritStones: 300, fame: 15, karma: 5 }
+    }
+  ],
+  core: [
+    {
+      id: 'sect_core_mission',
+      title: '【宗门】清缴邪修据点',
+      type: 'combat',
+      difficulty: 4,
+      description: '宗门探查到一处邪修据点，派遣核心弟子带队清缴。',
+      choices: [
+        {
+          id: 'assault',
+          text: '正面强攻，一举捣毁',
+          karmaChange: 15,
+          fameChange: 30,
+          successRate: 0.5,
+          specialOutcome: '一场血战，邪修授首！你名动青云。'
+        },
+        {
+          id: 'infiltrate',
+          text: '潜入策反，里应外合',
+          karmaChange: 20,
+          fameChange: 20,
+          successRate: 0.65,
+          specialOutcome: '你策反了数名底层邪修，里应外合之下几乎兵不血刃地解决了据点。'
+        }
+      ],
+      reward: { spiritStones: 800, fame: 30, karma: 15 }
+    }
+  ],
+  elder: [
+    {
+      id: 'sect_elder_diplomacy',
+      title: '【宗门】宗门会盟',
+      type: 'social',
+      difficulty: 5,
+      description: '代表青云派参加修真界宗门会盟，为宗门争取利益。',
+      choices: [
+        {
+          id: 'aggressive',
+          text: '强势立威，为宗门争夺更多资源',
+          karmaChange: -5,
+          fameChange: 40,
+          successRate: 0.5,
+          specialOutcome: '你在会盟上力压群雄，为宗门争取到了更多的灵脉份额，但也因此得罪了不少人。'
+        },
+        {
+          id: 'balanced',
+          text: '合纵连横，广结善缘',
+          karmaChange: 20,
+          fameChange: 25,
+          successRate: 0.85,
+          specialOutcome: '你的风度赢得了各方尊重，青云派的声望再上一层楼。'
+        }
+      ],
+      reward: { spiritStones: 2000, fame: 40, karma: 10 }
+    }
+  ],
+  grand_elder: [
+    {
+      id: 'sect_grand_elder_closed_door',
+      title: '【宗门】闭关悟道',
+      type: 'cultivation',
+      difficulty: 5,
+      description: '太上长老不问俗事，唯一的职责就是在宗门危难之际出手。日常可以闭关冲击更高境界。',
+      choices: [
+        {
+          id: 'meditate',
+          text: '闭关参悟天地至理',
+          karmaChange: 10,
+          fameChange: 10,
+          successRate: 1,
+          specialOutcome: '你遁入虚空，不知岁月流逝。一朝顿悟，胜过百年苦修。'
+        }
+      ],
+      reward: { spiritStones: 3000, fame: 20, karma: 10 }
+    }
+  ],
+  sect_master: [
+    {
+      id: 'sect_master_decision',
+      title: '【宗门】正邪大战',
+      type: 'combat',
+      difficulty: 5,
+      description: '魔道大举来犯，作为掌门，你必须做出最终的战略抉择。',
+      choices: [
+        {
+          id: 'unite',
+          text: '联合正道各派，共抗魔道',
+          karmaChange: 50,
+          fameChange: 100,
+          successRate: 0.7,
+          specialOutcome: '正道联盟在你的领导下击退了魔道，你成为了修真界公认的正道领袖！'
+        },
+        {
+          id: 'stand_alone',
+          text: '以青云派之力独挡魔潮',
+          karmaChange: 30,
+          fameChange: 80,
+          successRate: 0.4,
+          specialOutcome: '青云派在你的带领下击退了魔潮！经此一役，青云派成为正道第一宗！'
+        }
+      ],
+      reward: { spiritStones: 10000, fame: 100, karma: 50 }
+    }
+  ]
+}
+
+export const INJURY_TEMPLATES: Record<InjuryType, Omit<Injury, 'id'>> = {
+  meridian_damage: {
+    type: 'meridian_damage',
+    name: '经脉受损',
+    description: '突破失败导致经脉断裂，灵力运转不畅，需要时间调养。',
+    severity: 3,
+    daysRemaining: 20,
+    effects: { spirit: -30, body: -10, successRatePenalty: -0.1 }
+  },
+  foundation_crack: {
+    type: 'foundation_crack',
+    name: '道基裂痕',
+    description: '强行突破失败伤及根本，道基出现裂痕，未来突破更加困难。',
+    severity: 5,
+    daysRemaining: 50,
+    effects: { spirit: -20, mind: -20, successRatePenalty: -0.2 }
+  },
+  demon_seed: {
+    type: 'demon_seed',
+    name: '心魔种子',
+    description: '突破失败时心魔趁虚而入，在你识海种下了一颗种子。',
+    severity: 4,
+    daysRemaining: 30,
+    effects: { mind: -30, luck: -10, successRatePenalty: -0.15 }
+  },
+  debt_favor: {
+    type: 'debt_favor',
+    name: '欠下人情',
+    description: '护法者为救你付出了代价，你欠了一份天大的人情。',
+    severity: 2,
+    daysRemaining: 999,
+    effects: { luck: -5 }
+  },
+  loss_reputation: {
+    type: 'loss_reputation',
+    name: '声望受损',
+    description: '突破失败的消息传开，你的声望受到了影响。',
+    severity: 2,
+    daysRemaining: 999,
+    effects: {}
+  },
+  none: {
+    type: 'none',
+    name: '无伤',
+    description: '未受到实质伤害。',
+    severity: 0,
+    daysRemaining: 0,
+    effects: {}
+  }
+}
+
+export const BREAKTHROUGH_LOCATIONS: Record<BreakthroughPreparation['location'], {
+  name: string
+  description: string
+  successBonus: number
+  riskMultiplier: number
+  cost: number
+}> = {
+  sect: {
+    name: '宗门闭关室',
+    description: '最稳妥的选择，灵气充沛，有护山大阵加持。',
+    successBonus: 0.1,
+    riskMultiplier: 0.8,
+    cost: 0
+  },
+  cavern: {
+    name: '洞天福地',
+    description: '借助洞天中浓郁的灵气与机缘，收益与风险并存。',
+    successBonus: 0.05,
+    riskMultiplier: 1.0,
+    cost: 100
+  },
+  mountain_peak: {
+    name: '山巅引气',
+    description: '立于山巅接引九天清气，风险较高但突破后根基更稳。',
+    successBonus: -0.05,
+    riskMultiplier: 1.2,
+    cost: 50
+  },
+  secret_realm: {
+    name: '天机秘境',
+    description: '在秘境最深处闭关，借助上古残留的道韵冲击瓶颈。只有完成秘境后可选。',
+    successBonus: 0.2,
+    riskMultiplier: 0.6,
+    cost: 500
+  }
+}
+
+export const MAIN_QUEST_NPCS: { id: string; name: string; title: string; description: string; role: Relationship['role']; portrait: string; minBond: number }[] = [
+  {
+    id: 'npc_qingxuan',
+    name: '青玄子',
+    title: '青云派掌门',
+    description: '青云派现任掌门，修为深不可测，心怀苍生。',
+    role: 'master',
+    portrait: '👴',
+    minBond: 20
+  },
+  {
+    id: 'npc_linger',
+    name: '苏灵儿',
+    title: '掌门千金',
+    description: '青玄子独女，性格活泼开朗，天赋异禀。',
+    role: 'friend',
+    portrait: '👧',
+    minBond: 15
+  },
+  {
+    id: 'npc_hanfeng',
+    name: '寒风',
+    title: '大师兄',
+    description: '青云派大弟子，剑法通神，为人刚正不阿。',
+    role: 'friend',
+    portrait: '🧑',
+    minBond: 15
+  },
+  {
+    id: 'npc_mohen',
+    name: '墨痕',
+    title: '散修',
+    description: '游历天下的散修，见多识广，消息灵通。',
+    role: 'friend',
+    portrait: '🧔',
+    minBond: 10
+  },
+  {
+    id: 'npc_baishang',
+    name: '白裳',
+    title: '医仙',
+    description: '悬壶济世的医仙，妙手回春，活人无数。',
+    role: 'friend',
+    portrait: '👩',
+    minBond: 10
+  }
+]

@@ -90,15 +90,30 @@ export default function DemonScreen() {
       {pendingDemonTrial && !outcomeShown && !loading && (
         <div className="fade-in">
           <div className="card mb-6" style={{
-            background: 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(239,68,68,0.1))',
-            borderColor: 'var(--accent-purple)',
-            boxShadow: '0 0 40px rgba(139,92,246,0.3)'
+            background: pendingDemonTrial.hidden
+              ? 'linear-gradient(135deg, rgba(212,175,55,0.15), rgba(139,92,246,0.2))'
+              : 'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(239,68,68,0.1))',
+            borderColor: pendingDemonTrial.hidden ? 'var(--accent-gold)' : 'var(--accent-purple)',
+            boxShadow: pendingDemonTrial.hidden ? '0 0 50px rgba(212,175,55,0.4)' : '0 0 40px rgba(139,92,246,0.3)'
           }}>
             <div className="text-center mb-6">
               <div className="inline-block text-7xl mb-4" style={{ animation: 'sparkle 2s ease-in-out infinite' }}>
-                👁️
+                {pendingDemonTrial.hidden ? '🪞' : '👁️'}
               </div>
-              <div className="text-sm text-secondary mb-2">——心魔拷问——</div>
+              <div className="text-sm text-secondary mb-2">
+                {pendingDemonTrial.hidden ? (
+                  <span className="px-3 py-1 rounded-full bg-[rgba(212,175,55,0.2)] text-gold font-bold">
+                    ⚠️ 往生镜·隐藏心魔题
+                  </span>
+                ) : (
+                  '——心魔拷问——'
+                )}
+              </div>
+              {pendingDemonTrial.hidden && (
+                <p className="text-xs text-info max-w-xl mx-auto mb-3">
+                  这是由天机秘境往生镜引出的专属心魔，你的选择将影响你最终的命运轨迹。
+                </p>
+              )}
             </div>
 
             <div className="p-6 rounded-xl bg-[rgba(0,0,0,0.3)] border border-[rgba(139,92,246,0.3)] mb-6">

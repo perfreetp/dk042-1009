@@ -82,10 +82,15 @@ export default function CavernScreen() {
               名山之间，多有洞天。深入其中，或有奇遇机缘，或有杀身之祸。是福是祸，皆凭造化。
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="text-sm text-secondary">
               已探索次数：<span className="font-bold text-gold">{exploredCount}</span>
             </div>
+            {!secretRealmProgress[0]?.discovered && (
+              <div className="text-xs text-secondary italic">
+                💡 传闻深入洞天探索，或能发现不为人知的秘境线索……
+              </div>
+            )}
             <button
               className="btn btn-primary text-lg py-3 px-6"
               onClick={handleExplore}

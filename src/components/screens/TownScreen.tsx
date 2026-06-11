@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import type { Quest, QuestChoice, MainQuest, RelationshipEvent } from '@/types/game'
+import { SECT_POSITION_INFO, REALM_ORDER } from '@/types/game'
 import { generateShopItems } from '@/services/aiService'
 import type { Skill } from '@/types/game'
+import { SECT_QUESTS } from '@/data/gameData'
 
 interface ShopItem {
   skill: Skill
@@ -33,6 +35,7 @@ export default function TownScreen() {
   const resolveRelationshipEvent = useGameStore(s => s.resolveRelationshipEvent)
   const buySkill = useGameStore(s => s.buySkill)
   const addLog = useGameStore(s => s.addLog)
+  const trySectPositionUpgrade = useGameStore(s => s.trySectPositionUpgrade)
 
   const [tab, setTab] = useState<'people' | 'quests' | 'shop'>('people')
   const [loading, setLoading] = useState(false)
@@ -128,11 +131,35 @@ export default function TownScreen() {
             <p className="text-secondary text-sm">
               三教九流汇集之地，或能结识贵人，或可承接委托，机缘法宝皆藏于此。
             </p>
+            <div className="flex items-center gap-3 mt-3 flex-wrap text-xs">
+              <div className="px-3 py-1 rounded-full bg-[rgba(139,92,246,0.15)] border border-[rgba(139,92,246,0.3)]">
+                <span className="text-secondary">宗门职位：</span>
+                <span className="text-gold font-bold">
+                  {SECT_POSITION_INFO[character.sectPosition]?.name || character.sectPosition}
+                </span>
+              </div>
+              <div className="px-3 py-1 rounded-full bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.2)]">
+                <span className="text-secondary">宗门声望：</span>
+                <span className="font-bold text-gold">{character.sectFame || 0}</span>
+              </div>
+              {character.injuries && character.injuries.length > 0 && (
+                <div className="px-3 py-1 rounded-full bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)] text-bad">
+                  🩹 伤势 ×{character.injuries.length}
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-sm text-secondary">
               灵石：<span className="font-bold text-gold text-lg">💎 {character.spiritStones}</span>
             </div>
+            <button
+              className="btn btn-secondary"
+              onClick={() => trySectPositionUpgrade()}
+              title="尝试晋升宗门职位"
+            >
+              🏵️ 考核晋升
+            </button>
             <button
               className="btn btn-primary"
               onClick={handleRefresh}
@@ -263,6 +290,43 @@ export default function TownScreen() {
           )}
 
           <div className="card mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="section-title !mb-0">🏵️ 宗门任务 · {SECT_POSITION_INFO[character.sectPosition]?.name}</h3>
+              <span className="text-xs text-secondary">宗门声望：{character.sectFame || 0}</span>
+            </div>
+            <div className="grid gap-4">
+              {(SECT_QUESTS[character.sectPosition] || []).map(quest => (
+                <div
+                  key={quest.id}
+                  className="p-5 rounded-xl bg-[rgba(139,92,246,0.06)] border border-[rgba(139,92,246,0.2)] hover:border-[rgba(251,191,36,0.5)] transition-all"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h4 className="font-bold text-lg text-gold">{quest.title}</h4>
+                        <span className={`tag ${quest.type === 'combat' ? 'tag-attack' : quest.type === 'cultivation' ? 'tag-cultivation' : 'tag-support'}`}>
+                          {quest.type === 'combat' ? '战斗' : quest.type === 'social' ? '社交' : '修行'}
+                        </span>
+                        <span className="tag">难度 {'⭐'.repeat(quest.difficulty)}</span>
+                      </div>
+                      <p className="text-secondary text-sm mb-3">{quest.description}</p>
+                      <div className="flex gap-3 flex-wrap text-xs text-secondary">
+                        <span>奖励：灵石 {quest.reward?.spiritStones || 0}，名望 +{quest.reward?.fame || 0}，因果 +{quest.reward?.karma || 0}</span>
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-primary flex-shrink-0"
+                      onClick={() => setActiveQuest(quest)}
+                    >
+                      接取
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card mb-6">
             <h3 className="section-title">可接委托</h3>
             {quests.length === 0 ? (
               <p className="text-secondary text-center py-8">
@@ -281,10 +345,10 @@ export default function TownScreen() {
                           <h4 className="font-bold text-lg text-gold">{quest.title}</h4>
                           <span className={`tag ${
                             quest.type === 'combat' ? 'tag-attack' :
-                            quest.type === 'secret' ? 'tag-cultivation' : 'tag-support'
+                            quest.type === 'secret' || quest.type === 'cultivation' ? 'tag-cultivation' : 'tag-support'
                           }`}>
                             {quest.type === 'commission' ? '委托' : quest.type === 'combat' ? '战斗'
-                              : quest.type === 'social' ? '社交' : '隐秘'}
+                              : quest.type === 'social' ? '社交' : quest.type === 'cultivation' ? '修行' : '隐秘'}
                           </span>
                           <span className="text-xs text-secondary">
                             难度：{'⭐'.repeat(quest.difficulty)}

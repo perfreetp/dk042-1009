@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useGameStore } from '@/store/gameStore'
-import type { RiskLevel, DemonChoice } from '@/types/game'
+import type { RiskLevel, DemonChoice, BreakthroughPreparation } from '@/types/game'
 import { REALM_ORDER } from '@/types/game'
+import { BREAKTHROUGH_LOCATIONS, INJURY_TEMPLATES } from '@/data/gameData'
 
 export default function ScheduleScreen() {
   const character = useGameStore(s => s.character)
@@ -9,9 +10,13 @@ export default function ScheduleScreen() {
   const breakthroughReady = useGameStore(s => s.breakthroughReady)
   const pendingDemonTrial = useGameStore(s => s.pendingDemonTrial)
   const pendingDemonFromSchedule = useGameStore(s => s.pendingDemonFromSchedule)
+  const pendingBreakthroughPrep = useGameStore(s => s.pendingBreakthroughPrep)
   const triggerDemonTrial = useGameStore(s => s.triggerDemonTrial)
   const resolveDemonChoiceInSchedule = useGameStore(s => s.resolveDemonChoiceInSchedule)
   const attemptBreakthrough = useGameStore(s => s.attemptBreakthrough)
+  const startBreakthroughPrep = useGameStore(s => s.startBreakthroughPrep)
+  const setBreakthroughPrep = useGameStore(s => s.setBreakthroughPrep)
+  const attemptBreakthroughWithPrep = useGameStore(s => s.attemptBreakthroughWithPrep)
   const doMeditation = useGameStore(s => s.doMeditation)
   const doBodyTraining = useGameStore(s => s.doBodyTraining)
   const doTravel = useGameStore(s => s.doTravel)
@@ -19,6 +24,7 @@ export default function ScheduleScreen() {
 
   const [loading, setLoading] = useState<string | null>(null)
   const [showBreakthrough, setShowBreakthrough] = useState(false)
+  const [showBreakthroughPrep, setShowBreakthroughPrep] = useState(false)
   const [showDemon, setShowDemon] = useState(false)
   const [demonOutcome, setDemonOutcome] = useState<{ text: string; choice: DemonChoice } | null>(null)
 
@@ -33,6 +39,17 @@ export default function ScheduleScreen() {
   const handleBreakthrough = (risk: RiskLevel) => {
     attemptBreakthrough(risk)
     setShowBreakthrough(false)
+  }
+
+  const handleStartBreakthroughPrep = () => {
+    startBreakthroughPrep()
+    setShowBreakthrough(false)
+    setShowBreakthroughPrep(true)
+  }
+
+  const handleConfirmBreakthrough = () => {
+    attemptBreakthroughWithPrep()
+    setShowBreakthroughPrep(false)
   }
 
   const handleDemonTrial = async () => {
@@ -51,6 +68,9 @@ export default function ScheduleScreen() {
 
   const nextRealm = REALM_ORDER[REALM_ORDER.indexOf(character.realm) + 1] || '巅峰'
   const isDemonDay = currentDay % 10 === 0
+  const currentRealmIdx = REALM_ORDER.indexOf(character.realm)
+  const isMidLate = currentRealmIdx >= REALM_ORDER.indexOf('金丹期')
+  const hasInjuries = character.injuries && character.injuries.length > 0
 
   const DailyAction = ({
     icon, title, subtitle, desc, actionKey, color, onClick
@@ -100,6 +120,19 @@ export default function ScheduleScreen() {
                 <>距离下一境界还需 <span className="text-gold">{100 - character.realmProgress}</span> 点修为。</>
               )}
             </p>
+            {hasInjuries && (
+              <div className="mt-3 p-3 rounded-lg bg-[rgba(239,68,68,0.1)] border border-[rgba(239,68,68,0.3)]">
+                <p className="text-bad font-bold text-sm mb-2">🩹 当前伤势：</p>
+                <div className="space-y-1">
+                  {character.injuries.map(ij => (
+                    <div key={ij.id} className="text-xs text-secondary flex justify-between">
+                      <span>• {ij.name}</span>
+                      <span>剩余 {ij.daysRemaining} 日</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex gap-2 flex-wrap">
             {breakthroughReady && (
@@ -196,7 +229,7 @@ export default function ScheduleScreen() {
         )}
       </div>
 
-      {showBreakthrough && (
+      {showBreakthrough && !isMidLate && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="card card-gold max-w-2xl w-full fade-in">
             <h2 className="section-title text-2xl text-center">⚡ 突破 {character.realm} → {nextRealm}</h2>
@@ -238,6 +271,183 @@ export default function ScheduleScreen() {
             <button className="btn w-full" onClick={() => setShowBreakthrough(false)}>
               暂时放弃，继续积累
             </button>
+          </div>
+        </div>
+      )}
+
+      {showBreakthrough && isMidLate && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card card-gold max-w-2xl w-full fade-in">
+            <h2 className="section-title text-2xl text-center">⚡ {character.realm} → {nextRealm}</h2>
+            <p className="text-secondary mb-4 text-center">
+              金丹之后，每一次突破都是一场天地大劫，需精心准备方可成行。
+            </p>
+            <div className="p-4 rounded-lg bg-[rgba(239,68,68,0.08)] border border-[rgba(239,68,68,0.3)] mb-5">
+              <p className="text-bad text-sm font-bold mb-2">⚠️ 突破失败将留下永久痕迹：</p>
+              <div className="grid grid-cols-2 gap-2 text-xs text-secondary">
+                {Object.values(INJURY_TEMPLATES).filter(t => t.type !== 'none').map(t => (
+                  <div key={t.type} className="flex items-start gap-1">
+                    <span className="text-bad">•</span>
+                    <span><b>{t.name}</b>：{t.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button className="btn flex-1" onClick={() => setShowBreakthrough(false)}>
+                从长计议
+              </button>
+              <button className="btn btn-gold flex-1" onClick={handleStartBreakthroughPrep}>
+                🔮 开始准备突破
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(showBreakthroughPrep || pendingBreakthroughPrep) && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="card card-gold max-w-3xl w-full fade-in max-h-[90vh] overflow-y-auto">
+            <h2 className="section-title text-2xl text-center mb-2">🔮 突破准备 · {character.realm} → {nextRealm}</h2>
+            <p className="text-secondary text-center mb-6 text-sm">
+              丹药、护法、闭关地点，每一环都将影响最终成败。
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-5 mb-6">
+              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                <h3 className="font-bold text-gold mb-3">💊 破境丹药</h3>
+                <p className="text-xs text-secondary mb-3">每颗增加 5% 成功率</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <button className="btn !py-1 !px-3" onClick={() => setBreakthroughPrep({ pills: Math.max(0, character.breakthroughPrep.pills - 1) })} disabled={character.breakthroughPrep.pills <= 0}>
+                    -
+                  </button>
+                  <div className="text-2xl font-bold text-gold flex-1 text-center">
+                    {character.breakthroughPrep.pills} 颗
+                  </div>
+                  <button className="btn btn-primary !py-1 !px-3" onClick={() => setBreakthroughPrep({ pills: character.breakthroughPrep.pills + 1 })} disabled={character.spiritStones < (character.breakthroughPrep.pills + 1) * 100}>
+                    +
+                  </button>
+                </div>
+                <p className="text-xs text-secondary text-center">
+                  单价 💎 100 灵石 · 消耗 {(character.breakthroughPrep.pills) * 100} 灵石
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-primary)]">
+                <h3 className="font-bold text-gold mb-3">🛡️ 护法者</h3>
+                <p className="text-xs text-secondary mb-3">每位增加 3% 成功率</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {(() => {
+                    const candidates = useGameStore.getState().relationships.filter(r => r.bond >= 20)
+                    if (candidates.length === 0) return <p className="text-xs text-bad">暂无可用护法（羁绊≥20可护法）</p>
+                    return candidates.map(r => {
+                      const isGuardian = character.breakthroughPrep.guardians.includes(r.id)
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => setBreakthroughPrep({
+                            guardians: isGuardian
+                              ? character.breakthroughPrep.guardians.filter(id => id !== r.id)
+                              : [...character.breakthroughPrep.guardians, r.id]
+                          })}
+                          className={`w-full flex items-center gap-2 p-2 rounded-lg text-left text-sm transition-all ${
+                            isGuardian
+                              ? 'bg-[rgba(251,191,36,0.15)] border border-[rgba(251,191,36,0.4)]'
+                              : 'bg-[var(--bg-secondary)] border border-[var(--border-primary)] hover:border-[var(--border-gold)]'
+                          }`}
+                        >
+                          <span className="text-2xl">{r.portrait}</span>
+                          <span className="flex-1">
+                            <div className="font-bold">{r.name} · {r.title}</div>
+                            <div className="text-xs text-secondary">羁绊 {r.bond}</div>
+                          </span>
+                          {isGuardian && <span className="text-gold">✓</span>}
+                        </button>
+                      )
+                    })
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="font-bold text-gold mb-3">📍 闭关地点</h3>
+              <div className="grid grid-cols-2 gap-3">
+                {(Object.keys(BREAKTHROUGH_LOCATIONS) as (keyof typeof BREAKTHROUGH_LOCATIONS)[]).map(locKey => {
+                  const loc = BREAKTHROUGH_LOCATIONS[locKey]
+                  const canAfford = character.spiritStones >= loc.cost
+                  const secretRealmCompleted = useGameStore.getState().secretRealmProgress.some(r => r.completed)
+                  const disabled = (locKey === 'secret_realm' && !secretRealmCompleted) || !canAfford
+                  const isSelected = character.breakthroughPrep.location === locKey
+                  return (
+                    <button
+                      key={locKey}
+                      disabled={disabled}
+                      onClick={() => setBreakthroughPrep({ location: locKey })}
+                      className={`p-4 rounded-xl text-left transition-all ${
+                        disabled ? 'opacity-40 cursor-not-allowed' : ''
+                      } ${
+                        isSelected
+                          ? 'bg-[rgba(139,92,246,0.15)] border-2 border-[var(--border-gold)] shadow-[var(--shadow-gold)]'
+                          : 'bg-[var(--bg-secondary)] border-2 border-[var(--border-primary)] hover:border-[var(--border-gold)]'
+                      }`}
+                    >
+                      <div className="font-bold text-gold mb-1">
+                        {loc.name}
+                        {loc.cost > 0 && <span className="ml-2 text-xs text-secondary">💎 {loc.cost}</span>}
+                      </div>
+                      <div className="text-xs text-secondary mb-1">{loc.description}</div>
+                      <div className="flex gap-3 text-xs">
+                        <span className="text-good">成功率 +{Math.round(loc.successBonus * 100)}%</span>
+                        <span className="text-bad">风险 ×{loc.riskMultiplier.toFixed(1)}</span>
+                      </div>
+                      {locKey === 'secret_realm' && !secretRealmCompleted && (
+                        <div className="text-xs text-bad mt-1">需完成天机秘境</div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {(() => {
+              const prep = character.breakthroughPrep
+              const loc = BREAKTHROUGH_LOCATIONS[prep.location]
+              let est = 0.5 + character.realmProgress * 0.003
+                + loc.successBonus
+                + prep.pills * 0.05
+                + prep.guardians.length * 0.03
+              est = Math.max(5, Math.min(95, Math.round(est * 100)))
+              const totalCost = prep.pills * 100 + loc.cost
+              return (
+                <div className="p-4 rounded-lg bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.3)] mb-6">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-secondary">预测成功率：</span>
+                    <span className="text-2xl font-bold text-gold">{est}%</span>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-[var(--bg-secondary)] overflow-hidden mb-3">
+                    <div className="h-full bg-gradient-to-r from-[var(--accent-purple)] to-[var(--accent-gold)]" style={{ width: `${est}%` }} />
+                  </div>
+                  <div className="flex justify-between text-xs text-secondary">
+                    <span>丹药 ×{prep.pills} · 护法 ×{prep.guardians.length} · {loc.name}</span>
+                    <span>💎 总计 {totalCost} 灵石</span>
+                  </div>
+                </div>
+              )
+            })()}
+
+            <div className="flex gap-3">
+              <button className="btn flex-1" onClick={() => { setShowBreakthroughPrep(false); }}>
+                取消
+              </button>
+              <button
+                className="btn btn-gold flex-1"
+                onClick={handleConfirmBreakthrough}
+                disabled={character.spiritStones < (character.breakthroughPrep.pills * 100 + BREAKTHROUGH_LOCATIONS[character.breakthroughPrep.location].cost)}
+              >
+                ✨ 引气突破！
+              </button>
+            </div>
           </div>
         </div>
       )}

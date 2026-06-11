@@ -3,13 +3,15 @@ import type {
   GameState, Character, Origin, Daoxin, Realm,
   Attribute, Relationship, Quest, QuestChoice, EventChoice,
   DemonChoice, RiskLevel, GameLog, Skill, EventOutcome, Screen,
-  MainQuestStep, RelationshipEvent, EndingReason
+  MainQuestStep, RelationshipEvent, EndingReason, SectPosition,
+  Injury, MainQuestChoiceRecord, SecretRealmResult, BreakthroughPreparation
 } from '@/types/game'
-import { ORIGIN_INFO, DAOXIN_INFO, REALM_ORDER } from '@/types/game'
+import { ORIGIN_INFO, DAOXIN_INFO, REALM_ORDER, SECT_POSITION_INFO } from '@/types/game'
 import {
   ENDINGS, STARTER_SKILLS, MAIN_QUESTS, SECRET_REALM_DATA,
   SECRET_REALM_EVENTS, RELATIONSHIP_EVENTS_DATA, HIDDEN_DEMON_QUESTION,
-  NEW_SKILLS, SKILL_PRICES_EXTRA
+  NEW_SKILLS, SKILL_PRICES_EXTRA, SECT_QUESTS, INJURY_TEMPLATES,
+  BREAKTHROUGH_LOCATIONS, MAIN_QUEST_NPCS
 } from '@/data/gameData'
 import {
   generateDailyNarrative, generateRandomCavernEvent, generateRandomDemonTrial,
@@ -56,6 +58,13 @@ interface GameActions {
   resolveMainQuestChoice: (choice: QuestChoice) => void
   advanceSecretRealm: () => Promise<void>
   resolveRelationshipEvent: (choice?: QuestChoice) => void
+  trySectPositionUpgrade: () => void
+  startBreakthroughPrep: () => void
+  setBreakthroughPrep: (prep: Partial<BreakthroughPreparation>) => void
+  attemptBreakthroughWithPrep: () => void
+  unlockMainQuestNPC: (npcId: string) => void
+  addInjury: (injury: Omit<Injury, 'id'>) => void
+  healInjuriesByDay: () => void
 }
 
 const initialState: GameState = {
@@ -78,7 +87,12 @@ const initialState: GameState = {
   secretRealmProgress: [],
   relationshipEvents: [],
   pendingRelationshipEvent: null,
-  endingReasons: []
+  endingReasons: [],
+  mainQuestChoices: [],
+  secretRealmResults: [],
+  positionHistory: [],
+  breakthroughHistory: [],
+  pendingBreakthroughPrep: false
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -113,9 +127,20 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       luck: bonuses.luck || 5,
       karma: 0,
       fame: bonuses.fame || 0,
+      sectFame: 0,
+      sectPosition: 'outer',
       spiritStones: bonuses.spiritStones || 100,
       skills: [...STARTER_SKILLS.map((s: Skill) => ({ ...s }))],
-      maxSkills: 8
+      maxSkills: 8,
+      injuries: [],
+      breakthroughPrep: {
+        pills: 0,
+        guardians: [],
+        location: 'sect',
+        preparationDays: 0,
+        hasPrepared: false
+      },
+      hiddenDemonUnlocked: false
     }
 
     const openLog: GameLog = {
@@ -139,7 +164,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       relationshipEvents: initialRelationshipEvents,
       endingReasons: [],
       pendingDemonFromSchedule: false,
-      pendingRelationshipEvent: null
+      pendingRelationshipEvent: null,
+      mainQuestChoices: [],
+      secretRealmResults: [],
+      positionHistory: [{ position: 'outer', day: 1 }],
+      breakthroughHistory: [],
+      pendingBreakthroughPrep: false
     })
   },
 
@@ -228,16 +258,31 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   triggerCavernEvent: async () => {
-    const { character } = get()
+    const { character, secretRealmProgress } = get()
     if (!character) return
+
+    const srp = secretRealmProgress[0]
+    if (srp && !srp.discovered && Math.random() < 0.35) {
+      const firstEvent = SECRET_REALM_EVENTS[0]
+      set({
+        pendingEvent: firstEvent as GameState['pendingEvent'],
+        secretRealmProgress: secretRealmProgress.map(r =>
+          r.id === srp.id ? { ...r, discovered: true, stage: 1, lastVisitedDay: get().currentDay } : r
+        )
+      })
+      ;(get() as any).addLog(`你在洞天深处偶得奇遇，发现了【天机秘境】的线索！`)
+      return
+    }
+
     const resp = await generateRandomCavernEvent(character.realm)
     set({ pendingEvent: resp.data })
   },
 
   resolveCavernChoice: (choice) => {
-    const { character, addLog, pendingEvent } = get()
+    const { character, addLog, pendingEvent, secretRealmProgress, secretRealmResults } = get()
     if (!character || !pendingEvent) return
 
+    const isSecretRealm = pendingEvent.id && pendingEvent.id.startsWith('secret_realm')
     const outcome = randomOutcome(choice.outcomes) as EventOutcome
     let narrative = outcome.narrative
     const changes: string[] = []
@@ -295,7 +340,48 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         })
         return { character: ch, relationships: rels }
       }
-      return { character: ch }
+
+      let newSecretRealmProgress = state.secretRealmProgress
+      let newSecretRealmResults = state.secretRealmResults
+      if (isSecretRealm && state.secretRealmProgress.length > 0) {
+        const realm = state.secretRealmProgress[0]
+        const isFinalStage = realm.stage >= realm.totalStages
+
+        if (isFinalStage) {
+          newSecretRealmProgress = state.secretRealmProgress.map(r =>
+            r.id === realm.id ? { ...r, completed: true } : r
+          )
+          const resultRecord: SecretRealmResult = {
+            id: realm.id,
+            name: realm.name,
+            completed: true,
+            finalChoice: choice.text,
+            acquiredSkillId: outcome.skillGain?.id,
+            unlockedHiddenDemon: outcome.unlocksHiddenDemon === true
+          }
+          newSecretRealmResults = [...state.secretRealmResults, resultRecord]
+
+          if (outcome.unlocksHiddenDemon) {
+            ch.hiddenDemonUnlocked = true
+          }
+        }
+      }
+
+      let updatedSrp = newSecretRealmProgress
+      if (isSecretRealm && updatedSrp.length > 0) {
+        const realm = updatedSrp[0]
+        if (!realm.discovered) {
+          updatedSrp = updatedSrp.map(r =>
+            r.id === realm.id ? { ...r, discovered: true, stage: Math.max(r.stage, 1) } : r
+          )
+        }
+      }
+
+      return {
+        character: ch,
+        secretRealmProgress: updatedSrp,
+        secretRealmResults: newSecretRealmResults
+      }
     })
 
     if (changes.length) narrative += ` (${changes.join('，')})`
@@ -304,6 +390,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   triggerDemonTrial: async (fromSchedule = false) => {
+    const { character } = get()
+    if (character?.hiddenDemonUnlocked && Math.random() < 0.3) {
+      set({
+        pendingDemonTrial: HIDDEN_DEMON_QUESTION,
+        pendingDemonFromSchedule: fromSchedule
+      })
+      return
+    }
     const resp = await generateRandomDemonTrial()
     set({
       pendingDemonTrial: resp.data,
@@ -763,7 +857,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   _advanceDay: () => {
-    const { character, currentDay, maxDays, addLog, checkEnding, mainQuest, relationshipEvents, relationships } = get()
+    const { character, currentDay, maxDays, addLog, checkEnding, mainQuest, relationshipEvents, relationships, healInjuriesByDay, unlockMainQuestNPC } = get()
     if (!character) return
 
     const nextDay = currentDay + 1
@@ -771,6 +865,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       currentDay: nextDay,
       character: { ...character, age: character.age + (nextDay % 365 === 0 ? 1 : 0) }
     })
+
+    healInjuriesByDay()
 
     set(state => state.character && state.character.realmProgress >= 100 ? { breakthroughReady: true } : {})
 
@@ -787,6 +883,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           mainQuest: { ...s.mainQuest, started: true }
         } : {})
         addLog(`【主线开启】${mq.name}：${currentStep.title}`, 'main')
+
+        if (currentStep.unlockNPCs) {
+          currentStep.unlockNPCs.forEach(npcId => unlockMainQuestNPC(npcId))
+        }
       }
     }
 
@@ -822,7 +922,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   resolveMainQuestChoice: (choice) => {
-    const { character, addLog, mainQuest, relationships } = get()
+    const { character, addLog, mainQuest, relationships, unlockMainQuestNPC, mainQuestChoices } = get()
     if (!mainQuest || !character) return
 
     const currentStep = mainQuest.steps[mainQuest.currentStepIndex]
@@ -830,6 +930,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const success = Math.random() < choice.successRate
     const rewards: string[] = []
+
+    if (currentStep.unlockNPCs) {
+      currentStep.unlockNPCs.forEach(npcId => unlockMainQuestNPC(npcId))
+    }
 
     set(state => {
       if (!state.character) return {}
@@ -872,12 +976,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       let newRelationships = [...state.relationships]
       if (success && currentStep.reward?.relationshipChanges) {
         for (const rc of currentStep.reward.relationshipChanges) {
-          newRelationships = newRelationships.map(r =>
-            r.id === rc.id
-              ? { ...r, bond: clamp(r.bond + rc.bondChange, -100, 100) }
-              : r
-          )
-          rewards.push(`${newRelationships.find(r => r.id === rc.id)?.name} 羁绊${rc.bondChange > 0 ? '+' : ''}${rc.bondChange}`)
+          const existing = newRelationships.find(r => r.id === rc.id)
+          if (!existing) {
+            const npcInfo = MAIN_QUEST_NPCS.find(n => n.id === rc.id)
+            if (npcInfo) {
+              newRelationships.push({
+                id: npcInfo.id,
+                name: npcInfo.name,
+                title: npcInfo.title,
+                description: npcInfo.description,
+                bond: npcInfo.minBond + rc.bondChange,
+                role: npcInfo.role,
+                portrait: npcInfo.portrait,
+                autoUnlocked: true
+              })
+              rewards.push(`结识${npcInfo.name}`)
+            }
+          } else {
+            newRelationships = newRelationships.map(r =>
+              r.id === rc.id
+                ? { ...r, bond: clamp(r.bond + rc.bondChange, -100, 100) }
+                : r
+            )
+            rewards.push(`${existing.name} 羁绊${rc.bondChange > 0 ? '+' : ''}${rc.bondChange}`)
+          }
         }
       }
 
@@ -891,10 +1013,19 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         }
       }
 
+      const choiceRecord: MainQuestChoiceRecord = {
+        stepId: currentStep.id,
+        stepTitle: currentStep.title,
+        choiceId: choice.id,
+        choiceText: choice.text,
+        outcomeSummary: success ? '成功' : '失败'
+      }
+
       return {
         character: ch,
         relationships: newRelationships,
         mainQuest: newMainQuest,
+        mainQuestChoices: [...state.mainQuestChoices, choiceRecord],
         completedQuests: success && isLastStep
           ? [...state.completedQuests, mainQuest.id]
           : state.completedQuests
@@ -1044,5 +1175,201 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     set({ pendingRelationshipEvent: null })
+  },
+
+  trySectPositionUpgrade: () => {
+    const { character, addLog, positionHistory, currentDay } = get()
+    if (!character) return
+
+    const posOrder: SectPosition[] = ['outer', 'inner', 'core', 'elder', 'grand_elder', 'sect_master']
+    const currentIdx = posOrder.indexOf(character.sectPosition)
+
+    for (let i = posOrder.length - 1; i > currentIdx; i--) {
+      const nextPos = posOrder[i]
+      const info = SECT_POSITION_INFO[nextPos]
+      const realmIdx = REALM_ORDER.indexOf(character.realm)
+      const minRealmIdx = REALM_ORDER.indexOf(info.minRealm)
+
+      if (realmIdx >= minRealmIdx && character.fame >= info.minFame) {
+        set(s => ({
+          character: s.character ? {
+            ...s.character,
+            sectPosition: nextPos
+          } : null,
+          positionHistory: [...positionHistory, { position: nextPos, day: currentDay }]
+        }))
+        addLog(`宗门提拔：你晋升为【${info.name}】！`, 'social')
+        return
+      }
+    }
+  },
+
+  startBreakthroughPrep: () => {
+    const { character } = get()
+    if (!character) return
+
+    set({
+      pendingBreakthroughPrep: true
+    })
+  },
+
+  setBreakthroughPrep: (prep) => {
+    set(s => ({
+      character: s.character ? {
+        ...s.character,
+        breakthroughPrep: {
+          ...s.character.breakthroughPrep,
+          ...prep
+        }
+      } : null
+    }))
+  },
+
+  attemptBreakthroughWithPrep: () => {
+    const { character, addLog, breakthroughHistory, currentDay, trySectPositionUpgrade, checkEnding } = get()
+    if (!character) return
+
+    const prep = character.breakthroughPrep
+    const currentIdx = REALM_ORDER.indexOf(character.realm)
+    const nextRealm = REALM_ORDER[currentIdx + 1]
+    if (!nextRealm) return
+
+    const isMidLate = currentIdx >= REALM_ORDER.indexOf('金丹期')
+
+    let baseRate = 0.5 + character.realmProgress * 0.003
+    if (character.daoxin === 'ambitious') baseRate -= 0.05
+    if (character.daoxin === 'cautious') baseRate += 0.05
+
+    const locInfo = BREAKTHROUGH_LOCATIONS[prep.location]
+    baseRate += locInfo.successBonus
+    baseRate += prep.pills * 0.05
+    baseRate += prep.guardians.length * 0.03
+
+    if (character.injuries && character.injuries.length > 0) {
+      character.injuries.forEach(ij => {
+        baseRate += ij.effects.successRatePenalty || 0
+      })
+    }
+
+    baseRate = clamp(baseRate, 0.05, 0.95)
+    const success = Math.random() < baseRate
+
+    if (success) {
+      set(s => ({
+        character: s.character ? {
+          ...s.character,
+          realm: nextRealm,
+          realmProgress: 0,
+          spirit: { ...s.character.spirit, value: s.character.spirit.max },
+          body: { ...s.character.body, value: s.character.body.max },
+          mind: { ...s.character.mind, value: s.character.mind.max },
+          fame: clamp(s.character.fame + 15, -100, 100),
+          sectFame: clamp((s.character.sectFame || 0) + 10, 0, 1000),
+          breakthroughPrep: {
+            pills: 0,
+            guardians: [],
+            location: 'sect',
+            preparationDays: 0,
+            hasPrepared: false
+          }
+        } : null,
+        breakthroughHistory: [...breakthroughHistory, { realm: nextRealm, day: currentDay, success: true }],
+        breakthroughReady: false,
+        pendingBreakthroughPrep: false
+      }))
+      addLog(`突破成功！晋升【${nextRealm}】，天地异象横生，宗门震动。`, 'cultivation')
+      setTimeout(() => trySectPositionUpgrade(), 100)
+      setTimeout(() => checkEnding(false), 200)
+    } else {
+      const injuryTypes: Injury['type'][] = ['meridian_damage', 'foundation_crack', 'demon_seed']
+      if (prep.guardians.length > 0) injuryTypes.push('debt_favor')
+      const pick = injuryTypes[Math.floor(Math.random() * injuryTypes.length)]
+      const template = INJURY_TEMPLATES[pick]
+
+      const progressLoss = isMidLate ? 30 : 15
+      const fameLoss = isMidLate ? 10 : 3
+
+      set(s => ({
+        character: s.character ? {
+          ...s.character,
+          realmProgress: clamp(s.character.realmProgress - progressLoss, 0, 100),
+          fame: clamp(s.character.fame - fameLoss, -100, 100),
+          injuries: [
+            ...(s.character.injuries || []),
+            { id: `injury_${Date.now()}`, ...template }
+          ],
+          breakthroughPrep: {
+            pills: 0,
+            guardians: [],
+            location: 'sect',
+            preparationDays: 0,
+            hasPrepared: false
+          }
+        } : null,
+        breakthroughHistory: [...breakthroughHistory, { realm: nextRealm, day: currentDay, success: false, hadInjury: true }],
+        breakthroughReady: false,
+        pendingBreakthroughPrep: false
+      }))
+      addLog(`突破失败！道心震荡，${template.name}缠身，境界退转。需调养${template.daysRemaining}日。`, 'cultivation')
+      if (pick === 'demon_seed') {
+        addLog(`心魔种子潜伏于识海，下次心魔试炼将更为凶险……`, 'demon')
+      }
+    }
+  },
+
+  unlockMainQuestNPC: (npcId) => {
+    const { relationships, addLog } = get()
+    if (relationships.some(r => r.id === npcId)) return
+
+    const info = MAIN_QUEST_NPCS.find(n => n.id === npcId)
+    if (!info) return
+
+    const newRel: Relationship = {
+      id: info.id,
+      name: info.name,
+      title: info.title,
+      description: info.description,
+      bond: info.minBond,
+      role: info.role,
+      portrait: info.portrait,
+      autoUnlocked: true
+    }
+
+    set({ relationships: [...relationships, newRel] })
+    addLog(`【主线结缘】你与${info.name}相识，他/她将成为你修行路上的重要人物。`, 'social')
+  },
+
+  addInjury: (injury) => {
+    set(s => ({
+      character: s.character ? {
+        ...s.character,
+        injuries: [
+          ...(s.character.injuries || []),
+          { id: `injury_${Date.now()}`, ...injury }
+        ]
+      } : null
+    }))
+  },
+
+  healInjuriesByDay: () => {
+    set(s => {
+      if (!s.character || !s.character.injuries) return {}
+
+      const updatedInjuries = s.character.injuries
+        .map(ij => ({ ...ij, daysRemaining: ij.daysRemaining - 1 }))
+        .filter(ij => ij.daysRemaining > 0)
+
+      const healed = s.character.injuries.length - updatedInjuries.length
+      if (healed > 0) {
+        (get() as any).addLog(`调养中，${healed}处伤势痊愈。`, 'cultivation')
+      }
+
+      return {
+        character: {
+          ...s.character,
+          injuries: updatedInjuries
+        }
+      }
+    })
   }
 }))

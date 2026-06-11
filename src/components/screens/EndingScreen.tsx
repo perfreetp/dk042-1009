@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useGameStore } from '@/store/gameStore'
 import { ENDINGS } from '@/data/gameData'
-import { ORIGIN_INFO, DAOXIN_INFO, REALM_ORDER } from '@/types/game'
+import { ORIGIN_INFO, DAOXIN_INFO, REALM_ORDER, SECT_POSITION_INFO } from '@/types/game'
+import type { SectPosition } from '@/types/game'
 
 const RARITY_ORDER = ['普通', '稀有', '传说', '神话'] as const
 
@@ -12,6 +13,12 @@ export default function EndingScreen() {
   const endingReasons = useGameStore(s => s.endingReasons)
   const relationships = useGameStore(s => s.relationships)
   const logs = useGameStore(s => s.logs)
+  const mainQuest = useGameStore(s => s.mainQuest)
+  const mainQuestChoices = useGameStore(s => s.mainQuestChoices)
+  const secretRealmProgress = useGameStore(s => s.secretRealmProgress)
+  const secretRealmResults = useGameStore(s => s.secretRealmResults)
+  const positionHistory = useGameStore(s => s.positionHistory)
+  const breakthroughHistory = useGameStore(s => s.breakthroughHistory)
   const resetGame = useGameStore(s => s.resetGame)
   const currentDay = useGameStore(s => s.currentDay)
   const quests = useGameStore(s => s.completedQuests)
@@ -204,6 +211,146 @@ export default function EndingScreen() {
                     <div className="text-[10px] text-secondary line-clamp-2">{s.description}</div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="card mb-8" style={{ borderColor: 'rgba(139,92,246,0.5)' }}>
+          <h2 className="section-title text-xl mb-4">📜 一生履历 · 修行足迹</h2>
+          <p className="text-secondary text-sm mb-6">
+            你一生的重要选择与经历，汇聚成此刻的结局——
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-5">
+            {positionHistory && positionHistory.length > 0 && (
+              <div className="p-5 rounded-xl bg-[rgba(212,175,55,0.05)] border border-[rgba(212,175,55,0.2)]">
+                <h3 className="font-bold text-gold mb-3 flex items-center gap-2">
+                  🏵️ 宗门履历
+                </h3>
+                <div className="space-y-2">
+                  {positionHistory.map((p, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-secondary">仙历第 {p.day} 日</span>
+                      <span className="font-bold">→ {SECT_POSITION_INFO[p.position as SectPosition]?.name || p.position}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-[rgba(212,175,55,0.15)] text-xs text-secondary">
+                  宗门声望：{character?.sectFame || 0}，最终职位：
+                  <span className="text-gold font-bold ml-1">
+                    {SECT_POSITION_INFO[(character?.sectPosition || 'outer') as SectPosition]?.name}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {breakthroughHistory && breakthroughHistory.length > 0 && (
+              <div className="p-5 rounded-xl bg-[rgba(139,92,246,0.05)] border border-[rgba(139,92,246,0.2)]">
+                <h3 className="font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--accent-purple)' }}>
+                  ⚡ 境界突破
+                </h3>
+                <div className="space-y-2">
+                  {breakthroughHistory.map((b, i) => (
+                    <div key={i} className="flex justify-between text-sm items-center">
+                      <span className="text-secondary">仙历第 {b.day} 日</span>
+                      <span className={b.success ? 'text-good font-bold' : 'text-bad font-bold'}>
+                        {b.success ? '✓' : '✗'} {b.realm}
+                        {b.hadInjury && <span className="ml-1 text-xs text-bad">[负伤]</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t border-[rgba(139,92,246,0.15)] text-xs text-secondary">
+                  成功突破 {breakthroughHistory.filter(b => b.success).length} 次，
+                  失败 {breakthroughHistory.filter(b => !b.success).length} 次
+                </div>
+              </div>
+            )}
+
+            {mainQuest && (
+              <div className="p-5 rounded-xl bg-[rgba(251,191,36,0.05)] border border-[rgba(251,191,36,0.2)]">
+                <h3 className="font-bold text-gold mb-3 flex items-center gap-2">
+                  📜 主线 · {mainQuest.name}
+                </h3>
+                <div className="mb-3 text-sm">
+                  <span className="text-secondary">最终状态：</span>
+                  <span className={mainQuest.completed ? 'text-good font-bold' : 'text-info font-bold'}>
+                    {mainQuest.completed ? '已完成' : `进行中（第 ${mainQuest.currentStepIndex + 1}/${mainQuest.steps.length} 章）`}
+                  </span>
+                </div>
+                {mainQuestChoices && mainQuestChoices.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {mainQuestChoices.map((c, i) => (
+                      <div key={i} className="p-2 rounded bg-[var(--bg-secondary)] text-xs">
+                        <div className="font-bold mb-0.5 text-gold">
+                          【{c.stepTitle}】{c.outcomeSummary}
+                        </div>
+                        <div className="text-secondary">你的选择：{c.choiceText}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-secondary">未做出主线选择</p>
+                )}
+              </div>
+            )}
+
+            {secretRealmProgress && secretRealmProgress.length > 0 && (
+              <div className="p-5 rounded-xl bg-[rgba(139,92,246,0.05)] border border-[rgba(139,92,246,0.2)]">
+                <h3 className="font-bold mb-3 flex items-center gap-2" style={{ color: 'var(--accent-purple)' }}>
+                  🗝️ 天机秘境
+                </h3>
+                <div className="mb-3 text-sm">
+                  {secretRealmProgress[0].completed ? (
+                    <span className="text-good font-bold">✨ 已完成全部探索</span>
+                  ) : (
+                    <span className="text-info font-bold">
+                      进度 {secretRealmProgress[0].stage}/{secretRealmProgress[0].totalStages}
+                    </span>
+                  )}
+                </div>
+                {secretRealmResults && secretRealmResults.length > 0 && (
+                  <div className="space-y-2">
+                    {secretRealmResults.map((r, i) => (
+                      <div key={i} className="p-2 rounded bg-[var(--bg-secondary)] text-xs">
+                        <div className="font-bold text-gold mb-0.5">{r.name}</div>
+                        <div className="text-secondary">最终抉择：{r.finalChoice}</div>
+                        {r.unlockedHiddenDemon && (
+                          <div className="text-good">· 解锁隐藏心魔题</div>
+                        )}
+                        {r.acquiredSkillId && (
+                          <div className="text-info">· 获得特殊功法</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {relationships && relationships.filter(r => Math.abs(r.bond) >= 30).length > 0 && (
+              <div className="p-5 rounded-xl bg-[rgba(239,68,68,0.03)] border border-[rgba(239,68,68,0.15)] md:col-span-2">
+                <h3 className="font-bold mb-3 flex items-center gap-2">
+                  💞 重要羁绊
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {relationships
+                    .filter(r => Math.abs(r.bond) >= 30)
+                    .sort((a, b) => Math.abs(b.bond) - Math.abs(a.bond))
+                    .map(r => (
+                      <div key={r.id} className="p-3 rounded-lg bg-[var(--bg-secondary)] flex items-center gap-2">
+                        <div className="text-3xl">{r.portrait}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold truncate">{r.name}</div>
+                          <div className="text-xs text-secondary">{r.title}</div>
+                          <div className={`text-xs font-bold ${r.bond >= 0 ? 'text-good' : 'text-bad'}`}>
+                            {r.bond >= 0 ? '情深' : '仇怨'} {Math.abs(r.bond)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
               </div>
             )}
           </div>
